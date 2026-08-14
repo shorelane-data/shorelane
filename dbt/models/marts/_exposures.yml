@@ -7,7 +7,7 @@ exposures:
   - name: five_revenues_public_dashboard
     label: "Five revenues — public demo dashboard"
     type: dashboard
-    url: https://nodal-data.github.io/shorelane/dashboard/
+    url: https://shorelane-data.github.io/shorelane/dashboard/
     maturity: high
     description: >
       Public Plotly dashboard on the Shorelane demo site, re-rendered daily

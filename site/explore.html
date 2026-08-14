@@ -72,7 +72,7 @@
     <div class="card">
       <h3>🧬 Source &amp; dbt project</h3>
       <p>Seeded generators, dbt models, metric definitions, personas, and the derived ground truth — all open source.</p>
-      <a href="https://github.com/nodal-data/shorelane" rel="noopener">github.com/nodal-data/shorelane →</a>
+      <a href="https://github.com/shorelane-data/shorelane" rel="noopener">github.com/shorelane-data/shorelane →</a>
     </div>
     <div class="card">
       <h3>🧠 Build the context layer</h3>
@@ -92,7 +92,7 @@ GROUP BY measure_name
 ORDER BY measure_name;</code></pre>
   <p>You'll get five different "revenues" for the same quarter. Which one is <em>the</em> revenue?
   That depends on who's asking — which is exactly the ambiguity the
-  <a href="https://github.com/nodal-data/shorelane/tree/main/context">context layer</a> resolves.</p>
+  <a href="https://github.com/shorelane-data/shorelane/tree/main/context">context layer</a> resolves.</p>
 
   <h2>The trap, in one sentence</h2>
   <p>Net-30 subscriptions are <em>billed up front</em> but <em>recognized ratably</em>, refunds
@@ -105,8 +105,8 @@ ORDER BY measure_name;</code></pre>
   <ul>
     <li>Point a <a href="https://cloud.google.com/bigquery/docs/pre-built-tools#mcp" rel="noopener">BigQuery MCP server</a> (using your own project for billing) at the public dataset.</li>
     <li>Ask an AI agent a deceptively easy question — <em>"What was revenue in Q1 2024?"</em> — and note the confident answer.</li>
-    <li>Run the <a href="https://github.com/nodal-data/nodal-context" rel="noopener">nodal-context</a> ~30-minute test-drive interview against the same warehouse (the open-source <a href="https://github.com/nodal-data/shorelane/tree/main/dbt" rel="noopener">dbt project</a> is one of its inputs — a pre-parsed <a href="dbt/manifest.json">manifest.json</a> is published here, so you don't need dbt installed).</li>
-    <li>Ask again with the confirmed context loaded, and compare against the committed <a href="https://github.com/nodal-data/shorelane/tree/main/context/ground_truth" rel="noopener">ground truth</a>.</li>
+    <li>Run the <a href="https://github.com/nodal-data/nodal-context" rel="noopener">nodal-context</a> ~30-minute test-drive interview against the same warehouse (the open-source <a href="https://github.com/shorelane-data/shorelane/tree/main/dbt" rel="noopener">dbt project</a> is one of its inputs — a pre-parsed <a href="dbt/manifest.json">manifest.json</a> is published here, so you don't need dbt installed).</li>
+    <li>Ask again with the confirmed context loaded, and compare against the committed <a href="https://github.com/shorelane-data/shorelane/tree/main/context/ground_truth" rel="noopener">ground truth</a>.</li>
   </ul>
 
   <div class="note">
@@ -119,7 +119,7 @@ ORDER BY measure_name;</code></pre>
 </main>
 
 <footer>
-  <div class="wrap">© Shorelane Commerce — a fictional company · synthetic data for analytics evaluation · <a href="https://github.com/nodal-data/shorelane">source</a></div>
+  <div class="wrap">© Shorelane Commerce — a fictional company · synthetic data for analytics evaluation · <a href="https://github.com/shorelane-data/shorelane">source</a></div>
 </footer>
 
 </body>

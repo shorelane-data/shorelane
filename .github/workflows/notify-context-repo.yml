@@ -40,7 +40,7 @@ permissions:
 
 env:
   SOURCE_ID: "dbt_shorelane"          # EDIT: the lineage source id in context.config.yaml
-  CONTEXT_REPO: "nodal-data/shorelane-analytics-context"   # EDIT
+  CONTEXT_REPO: "shorelane-data/shorelane-analytics-context"   # EDIT
   MANIFEST_BRANCH: dbt-manifest
 
 jobs:
