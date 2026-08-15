@@ -36,7 +36,7 @@ manifest: # build dbt/target/manifest.json with zero credentials (dbt parse only
 
 manifest-fetch: # fetch the published manifest.json (no dbt install needed)
 	mkdir -p dbt/target
-	curl -sf -o dbt/target/manifest.json https://nodal-data.github.io/shorelane/dbt/manifest.json
+	curl -sf -o dbt/target/manifest.json https://shorelane-data.github.io/shorelane/dbt/manifest.json
 
 dashboard: # render the free static Plotly dashboard (five revenues)
 	python -m bi.plotly.revenue_dashboard

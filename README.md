@@ -24,10 +24,10 @@ agent picks one with false confidence. See `CLAUDE.md` for the full design contr
 
 - **Fictional company site + live dashboard** — published via GitHub Pages
   (`.github/workflows/pages.yml`):
-  [the marketing homepage](https://nodal-data.github.io/shorelane/),
-  [an explore-the-data page](https://nodal-data.github.io/shorelane/explore.html),
-  the [five-revenues dashboard](https://nodal-data.github.io/shorelane/dashboard/),
-  and the [executive dashboard](https://nodal-data.github.io/shorelane/business/)
+  [the marketing homepage](https://shorelane-data.github.io/shorelane/),
+  [an explore-the-data page](https://shorelane-data.github.io/shorelane/explore.html),
+  the [five-revenues dashboard](https://shorelane-data.github.io/shorelane/dashboard/),
+  and the [executive dashboard](https://shorelane-data.github.io/shorelane/business/)
   (KPIs + five charts across four period views), all re-rendered daily
   `--as-of today` so they match the live warehouse without any credentials in CI.
 - **Public BigQuery datasets** — `nodal-shorelane.shorelane_raw` (landing tables)
@@ -67,7 +67,7 @@ agent picks one with false confidence. See `CLAUDE.md` for the full design contr
       ```bash
       # Option C: no make? download it directly
       mkdir -p dbt/target && curl -sf -o dbt/target/manifest.json \
-        https://nodal-data.github.io/shorelane/dbt/manifest.json
+        https://shorelane-data.github.io/shorelane/dbt/manifest.json
       ```
 
    2. **Clone nodal-context next to this repo and start the interview:**
@@ -86,7 +86,7 @@ agent picks one with false confidence. See `CLAUDE.md` for the full design contr
       to a sibling `analytics-context/` repo.
 
    3. **When the interview asks for inputs**, answer with Shorelane's fixtures:
-      - *Company webpage* → <https://nodal-data.github.io/shorelane/>
+      - *Company webpage* → <https://shorelane-data.github.io/shorelane/>
       - *dbt project* → this repo's `dbt/` folder (e.g. `../shorelane/dbt/`),
         with the manifest from step i at `dbt/target/manifest.json`
 
@@ -104,7 +104,7 @@ The warehouse connection runs through Google's
 1. **Clone the shorelane repo.**
 
    ```bash
-   git clone https://github.com/nodal-data/shorelane.git
+   git clone https://github.com/shorelane-data/shorelane.git
    cd shorelane
    ```
 
