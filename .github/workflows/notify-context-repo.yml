@@ -55,14 +55,15 @@ jobs:
 
       - run: pip install dbt-core dbt-bigquery         # EDIT: e.g. dbt-bigquery
 
-      # `dbt parse` never opens a warehouse connection, so a committed profiles
-      # dir with placeholder credentials is enough.
-      - run: dbt parse --profiles-dir dbt/profiles       # EDIT
+      # `dbt parse` never opens a warehouse connection, so the committed
+      # parse-only profile is enough (same invocation as `make manifest`).
+      - run: dbt parse --profiles-dir profiles.parse
+        working-directory: dbt
 
       - name: Publish manifest branch (single-commit orphan, force-pushed)
         run: |
           d=$(mktemp -d)
-          cp target/manifest.json "$d/manifest.json"    # EDIT path if dbt is nested
+          cp dbt/target/manifest.json "$d/manifest.json"
           cd "$d"
           git init -b "$MANIFEST_BRANCH"
           git -c user.name=github-actions -c user.email=actions@github.com add manifest.json
