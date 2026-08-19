@@ -22,7 +22,7 @@ import os
 import pandas as pd
 
 import config
-from generators import orders
+from generators import dataset
 from generators.measures import five_revenues
 from loaders.visibility import visible_tables
 
@@ -57,7 +57,7 @@ def main() -> None:
     if args.as_of:
         as_of = pd.Timestamp.now().normalize() if args.as_of == "today" else pd.Timestamp(args.as_of)
 
-    tables = orders.generate()
+    tables = dataset.generate()
     if as_of is not None:
         tables = visible_tables(tables, as_of)
     df = monthly_series(tables, as_of=as_of)

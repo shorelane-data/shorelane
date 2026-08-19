@@ -14,7 +14,7 @@ import argparse
 import os
 
 import config
-from generators import orders
+from generators import dataset
 from generators.measures import five_revenues
 
 
@@ -24,7 +24,7 @@ def main() -> None:
     args = ap.parse_args()
 
     os.makedirs(config.RAW_DIR, exist_ok=True)
-    tables = orders.generate()
+    tables = dataset.generate()
 
     for name, df in tables.items():
         path = os.path.join(config.RAW_DIR, f"{name}.parquet")
