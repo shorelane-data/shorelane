@@ -10,6 +10,89 @@ version: 2
 # mine the manifest (e.g. nodal-context's dbt_extract.py).
 
 models:
+  - name: stg_app_customers
+    description: "One row per canonical app customer, including profiles without orders."
+    columns:
+      - name: app_db_customer_id
+        description: "Canonical customer primary key."
+        tests: [unique, not_null]
+      - name: created_date
+        description: "App profile creation date."
+        tests: [not_null]
+
+  - name: stg_stripe_customers
+    description: "One row per Stripe identity, including historical inactive aliases."
+    columns:
+      - name: stripe_customer_id
+        description: "Stripe-native customer key."
+        tests: [unique, not_null]
+      - name: created_date
+        description: "Date the Stripe identity was created."
+        tests: [not_null]
+      - name: is_active
+        description: "Current-state active flag after loader as-of masking."
+        tests: [not_null]
+      - name: deactivated_date
+        description: "Date a historical Stripe identity was deactivated; otherwise null."
+
+  - name: stg_shopify_customers
+    description: "One row per Shopify-native customer identity."
+    columns:
+      - name: shopify_customer_id
+        description: "Shopify-native customer primary key."
+        tests: [unique, not_null]
+      - name: created_date
+        description: "Date the Shopify identity was created."
+        tests: [not_null]
+      - name: is_active
+        description: "Shopify source-native active flag."
+        tests: [not_null]
+
+  - name: stg_salesforce_customers
+    description: "One row per Salesforce-native customer identity."
+    columns:
+      - name: salesforce_customer_id
+        description: "Salesforce-native customer primary key."
+        tests: [unique, not_null]
+      - name: created_date
+        description: "Date the Salesforce identity was created."
+        tests: [not_null]
+      - name: is_active
+        description: "Salesforce source-native active flag."
+        tests: [not_null]
+
+  - name: stg_customer_id_crosswalk
+    description: >
+      Retained source-alias to canonical-app mappings. The unique key is qualified
+      by both source_system and source_customer_id; the planted migration gap is
+      represented by absent rows, never null canonical IDs.
+    columns:
+      - name: source_system
+        description: "Source namespace qualifying source_customer_id."
+        tests:
+          - not_null
+          - accepted_values:
+              values: [app_db, stripe, shopify, salesforce]
+      - name: source_customer_id
+        description: "Source-native customer ID, unique together with source_system."
+        tests: [not_null]
+      - name: app_db_customer_id
+        description: "Retained canonical app customer mapping."
+        tests:
+          - not_null
+          - relationships:
+              to: ref('stg_app_customers')
+              field: app_db_customer_id
+      - name: linked_date
+        description: "Date the retained crosswalk mapping became available."
+        tests: [not_null]
+      - name: link_method
+        description: "How the canonical mapping was linked."
+        tests:
+          - not_null
+          - accepted_values:
+              values: [primary_key, 2021_migration, direct_sync]
+
   - name: stg_orders
     description: >
       One row per order, all channels (d2c, business_subscription, marketplace).
@@ -21,6 +104,13 @@ models:
         tests:
           - unique
           - not_null
+      - name: customer_id
+        description: "Canonical app customer foreign key."
+        tests:
+          - not_null
+          - relationships:
+              to: ref('stg_app_customers')
+              field: app_db_customer_id
 
   - name: stg_invoices
     description: >
@@ -40,6 +130,13 @@ models:
           - relationships:
               to: ref('stg_orders')
               field: order_id
+      - name: salesforce_customer_id
+        description: "Source-native Salesforce customer for the invoice."
+        tests:
+          - not_null
+          - relationships:
+              to: ref('stg_salesforce_customers')
+              field: salesforce_customer_id
 
   - name: stg_refunds
     description: >
@@ -58,6 +155,13 @@ models:
           - relationships:
               to: ref('stg_orders')
               field: order_id
+      - name: stripe_customer_id
+        description: "Source-native Stripe customer active for the refund date."
+        tests:
+          - not_null
+          - relationships:
+              to: ref('stg_stripe_customers')
+              field: stripe_customer_id
 
   - name: stg_revenue_recognition
     description: >

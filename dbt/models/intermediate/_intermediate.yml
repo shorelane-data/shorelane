@@ -1,0 +1,39 @@
+version: 2
+
+models:
+  - name: int_customer_identity
+    description: >
+      Long identity bridge at one row per observed qualified source alias. It starts
+      from all source customer records and left joins the crosswalk on both source
+      system and source customer ID, preserving unresolved aliases without assigning
+      them to a canonical customer. Historical Stripe aliases remain in this model.
+    columns:
+      - name: source_system
+        description: "Source namespace: app_db, stripe, shopify, or salesforce."
+        tests:
+          - not_null
+          - accepted_values:
+              values: [app_db, stripe, shopify, salesforce]
+      - name: source_customer_id
+        description: "Source-native ID, unique only together with source_system."
+        tests: [not_null]
+      - name: source_created_date
+        description: "Date the source-native identity was created."
+        tests: [not_null]
+      - name: is_active
+        description: "Source-native active flag; historical Stripe identities are false."
+        tests: [not_null]
+      - name: deactivated_date
+        description: "Stripe deactivation date; null for current and non-Stripe aliases."
+      - name: app_db_customer_id
+        description: "Nullable canonical ID. Null means the alias is unresolved and cannot be attributed."
+      - name: linked_date
+        description: "Nullable date the retained crosswalk link became available."
+      - name: link_method
+        description: "Nullable primary_key, 2021_migration, or direct_sync method."
+      - name: resolution_status
+        description: "Resolution outcome, distinguishing the planted migration gap from ordinary sync lag."
+        tests:
+          - not_null
+          - accepted_values:
+              values: [resolved, unresolved_migration_gap, unresolved_sync_lag]

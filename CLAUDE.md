@@ -142,8 +142,10 @@ do not mark a debt item built until its full eval triple and warehouse models ex
    shopify / app_db; a 2021 migration drops a fraction of the crosswalk. Trap:
    joins silently drop or double-count. Context: identity-resolution model + null-rate.
    **In progress:** v3 local generation, `raw_schema/` contracts, derived ground truth,
-   resolving guide/LookML, and eval/rubric exist. Staging/marts and coordinated live
-   warehouse rollout do not yet, so this is not a completed vertical slice.
+   resolving guide/LookML, eval/rubric, and the checksum-guarded canonical dbt mirror
+   from reviewed `shorelane-dbt` PR #9 exist. The public BigQuery/private Redshift v3
+   migrations, builds, and cross-warehouse parity have not run, and package version
+   `3.0.0` has not been released, so this is not a completed vertical slice.
 2. **OfficeMax acquisition** — an unmerged cohort with cents-vs-dollars and
    different status enums. Trap: unit/enum mismatch in sums and filters.
 3. **Channel rename 2022** — "direct" → "d2c" without backfill. Trap: one channel

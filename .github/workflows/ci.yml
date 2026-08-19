@@ -23,6 +23,7 @@ jobs:
         with:
           python-version: "3.11"
       - run: pip install -e .
+      - run: python tests/check_dbt_mirror.py
       - run: python tests/check_dataset_orchestration.py
       - run: python tests/check_table_stability.py
       - run: python tests/check_identity_generation.py

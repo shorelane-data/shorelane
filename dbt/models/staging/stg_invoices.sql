@@ -12,5 +12,6 @@ select
     cast(due_date as date)        as due_date,
     cast(collected_date as date)  as collected_date,
     {{ money('amount') }}         as amount,
-    is_bad_debt
+    is_bad_debt,
+    salesforce_customer_id
 from source

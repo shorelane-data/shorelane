@@ -31,8 +31,13 @@ files locally with `make generate`; their exact landing contracts are in
 
 The local generator-side eval triple is present: raw schemas, derived identity ground
 truth, a resolving guide and semantic artifact, and pinned questions/rubric. The
-identity vertical slice is still **not warehouse-complete**: dbt staging/marts and the
-public BigQuery/private Redshift v3 rollout remain coordinated follow-up work. The
+portable dbt staging, identity bridge, safe customer dimension, quality mart, and
+singular tests are mirrored byte-for-byte from the reviewed `shorelane-dbt` PR #9
+commit recorded in `dbt/mirror_manifest.json`; run
+`python tests/check_dbt_mirror.py --canonical-root ../shorelane-dbt` to verify the
+sibling checkout. The identity vertical slice is still **not warehouse-complete**:
+the public BigQuery/private Redshift v3 migrations, loads, builds, and parity checks
+have not run. The package also remains at `2.2.0` until coordinated release. The
 public-demo instructions below describe the currently deployed warehouse surface.
 
 ## Public demo
