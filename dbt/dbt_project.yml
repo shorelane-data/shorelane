@@ -17,4 +17,4 @@ models:
 
 # Generation timeline, exposed to models via {{ var('...') }} if needed.
 vars:
-  dataset_version: "shorelane-v2"
+  dataset_version: "shorelane-v3"

@@ -5,7 +5,7 @@
 # + the context artifact that should defuse it. Questions read like real Slack
 # messages, not contorted gotchas — the difficulty lives in the warehouse.
 
-dataset_version: shorelane-v2
+dataset_version: shorelane-v3
 
 questions:
   - id: revenue_q1_2024_unqualified

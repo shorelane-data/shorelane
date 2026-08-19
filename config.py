@@ -10,7 +10,7 @@ See CLAUDE.md for the design contract.
 """
 from __future__ import annotations
 
-DATASET_VERSION = "shorelane-v2"
+DATASET_VERSION = "shorelane-v3"
 
 # Master seed. All randomness derives from this. Do not introduce unseeded RNG.
 SEED = 20190401
@@ -26,6 +26,11 @@ END_DATE = "2027-12-31"
 # is sized to run in seconds while still making the five revenues diverge cleanly.
 # Scaled with the v2 timeline extension to keep ~4.6 orders/day density.
 N_ORDERS = 15000
+
+# Identity-fragmentation fixture. These values are versioned raw-data semantics.
+IDENTITY_MIGRATION_DATE = "2021-07-01"
+IDENTITY_CROSSWALK_DROP_RATE = 0.12
+STRIPE_ACCOUNT_RECREATION_RATE = 0.06
 
 # ---------------------------------------------------------------------------
 # Channel mix (must sum to 1.0). Three revenue streams, per the Shorelane brief.

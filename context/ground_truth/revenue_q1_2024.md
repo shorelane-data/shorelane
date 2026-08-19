@@ -1,6 +1,6 @@
 # Ground truth — "What was our revenue in Q1 2024?"
 
-Dataset: **shorelane-v2** (SEED=20190401). These figures are **derived from the
+Dataset: **shorelane-v3** (SEED=20190401). These figures are **derived from the
 generated data**, not hand-authored. Regenerate with the pinned seed and they
 reproduce exactly. If they don't, something perturbed the RNG — treat it as a
 breaking change and re-derive (`python -m generators.emit --period`).

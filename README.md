@@ -183,7 +183,7 @@ pip install -e .
 make verify        # generates data + prints the five revenues for Q1 2024
 ```
 
-Expected (dataset shorelane-v2, SEED=20190401):
+Expected (dataset shorelane-v3, SEED=20190401):
 
 | measure | Q1 2024 |
 |---|---:|

@@ -7,11 +7,11 @@ have "arrived" by a given as-of date. This module is the single definition of
 that arrival rule, shared by every warehouse loader (BigQuery today, Redshift
 later) so the drip stays warehouse-neutral.
 
-Arrival rule: a row is visible when its own event date <= as_of. One exception:
-an invoice whose collected_date is still in the future is visible (it was
-billed) but its collected_date is masked to NULL — the Fivetran-style late
-update. A NULL collected_date with is_bad_debt=False therefore reads as
-"pending collection", which is the correct live semantics.
+Arrival rule: a row is visible when its own event date <= as_of. Future updates
+on an otherwise-visible row are masked: an invoice's future collected_date is
+NULL (the Fivetran-style late update), and a Stripe customer's future
+deactivated_at is NULL with is_active restored to true. At the update timestamp,
+the final values become visible.
 
 Parity property: for any period that lies fully <= as_of, the filtered tables
 produce the same five revenues as generators/measures.py on the full Parquet.
@@ -26,6 +26,11 @@ ARRIVAL_COLUMNS = {
     "app_db__invoices": "billed_date",
     "app_db__revenue_recognition": "recognition_date",
     "stripe__refunds": "refund_date",
+    "app_db__customers": "created_at",
+    "stripe__customers": "created_at",
+    "shopify__customers": "created_at",
+    "salesforce__customers": "created_at",
+    "app_db__customer_id_crosswalk": "linked_at",
 }
 
 
@@ -38,5 +43,9 @@ def visible_tables(tables: dict[str, pd.DataFrame], as_of) -> dict[str, pd.DataF
         vis = df[df[col] <= cutoff].copy()
         if name == "app_db__invoices":
             vis.loc[vis["collected_date"] > cutoff, "collected_date"] = pd.NaT
+        elif name == "stripe__customers":
+            future_deactivation = vis["deactivated_at"] > cutoff
+            vis.loc[future_deactivation, "deactivated_at"] = pd.NaT
+            vis.loc[future_deactivation, "is_active"] = True
         out[name] = vis.reset_index(drop=True)
     return out
