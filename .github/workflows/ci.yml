@@ -27,3 +27,4 @@ jobs:
       - run: python tests/check_table_stability.py
       - run: python tests/check_identity_generation.py
       - run: python tests/check_ground_truth.py
+      - run: python tests/check_identity_ground_truth.py
