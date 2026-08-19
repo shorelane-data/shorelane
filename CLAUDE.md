@@ -141,9 +141,9 @@ do not mark a debt item built until its full eval triple and warehouse models ex
 1. **Identity fragmentation** — 2–4 IDs per customer across stripe / salesforce /
    shopify / app_db; a 2021 migration drops a fraction of the crosswalk. Trap:
    joins silently drop or double-count. Context: identity-resolution model + null-rate.
-   **In progress:** v3 local generation and `raw_schema/` contracts exist; staging/mart,
-   resolving context, derived identity ground truth, eval/rubric, and coordinated live
-   warehouse rollout do not yet.
+   **In progress:** v3 local generation, `raw_schema/` contracts, derived ground truth,
+   resolving guide/LookML, and eval/rubric exist. Staging/marts and coordinated live
+   warehouse rollout do not yet, so this is not a completed vertical slice.
 2. **OfficeMax acquisition** — an unmerged cohort with cents-vs-dollars and
    different status enums. Trap: unit/enum mismatch in sums and filters.
 3. **Channel rename 2022** — "direct" → "d2c" without backfill. Trap: one channel

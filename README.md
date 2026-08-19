@@ -29,12 +29,11 @@ source-native Salesforce IDs to invoices and Stripe IDs to refunds. Generate tho
 files locally with `make generate`; their exact landing contracts are in
 `raw_schema/revenue_slice.md` and `raw_schema/customer_identity.md`.
 
-This is generator and raw-schema groundwork, **not a completed identity vertical
-slice**: the staging/mart, resolving context artifact, identity ground truth, and eval
-still have to land. It also does not mean the public BigQuery datasets or private
-Redshift warehouse already have the v3 schema. Live warehouse rollout will be
-coordinated later with loader/dbt releases. The public-demo instructions below
-describe the currently deployed warehouse surface.
+The local generator-side eval triple is present: raw schemas, derived identity ground
+truth, a resolving guide and semantic artifact, and pinned questions/rubric. The
+identity vertical slice is still **not warehouse-complete**: dbt staging/marts and the
+public BigQuery/private Redshift v3 rollout remain coordinated follow-up work. The
+public-demo instructions below describe the currently deployed warehouse surface.
 
 ## Public demo
 

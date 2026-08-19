@@ -1,0 +1,59 @@
+# Hybrid grading contract for all three customer-identity evals. The
+# question-level canonical_answer and silent_fail_values are derived from
+# generators.identity_measures and pinned by tests/check_identity_eval.py.
+
+rubric: customer_identity_answer
+applies_to:
+  - identity_customer_count_2025
+  - identity_pre_migration_shopify
+  - identity_multi_source_gmv_2024
+
+criteria:
+  - id: reject_silent_values
+    type: deterministic
+    weight: 0.25
+    check: >
+      A response whose primary answer matches any question-level
+      silent_fail_values entry is an automatic 0. A silent value may appear only
+      when explicitly labeled as the rejected raw-alias or unsafe-fanout answer
+      alongside the complete canonical answer. Supporting canonical fields such as
+      missing counts and diagnostic row counts are not silent-fail values.
+
+  - id: correct_grain
+    type: llm_judge
+    weight: 0.30
+    judge_prompt: >
+      Does the response use the requested grain and supply every field in
+      canonical_answer (currency to the cent and the null rate to six decimals)?
+      Customer counts must use canonical app-customer grain where requested;
+      source-ID counts must use source-qualified alias grain. For the GMV question,
+      each eligible order must contribute once. Reject a correct-looking primary
+      number justified at the wrong grain.
+
+  - id: unresolved_reporting
+    type: llm_judge
+    weight: 0.20
+    judge_prompt: >
+      For identity_customer_count_2025, does the response explicitly report 346
+      unresolved source IDs and the 0.023405 resolution null rate with the 4,516
+      ordered canonical customer count? For identity_pre_migration_shopify, does it
+      explicitly report both 1,650 tied IDs and 208 missing IDs? Treat the criterion
+      as satisfied for identity_multi_source_gmv_2024, which requests no unresolved
+      field. Do not accept an inner join that silently discards unresolved aliases.
+
+  - id: no_identity_fanout
+    type: llm_judge
+    weight: 0.25
+    judge_prompt: >
+      Does the response avoid joining order facts directly to the long identity
+      bridge and explain or demonstrate a deduplicated canonical eligible-customer
+      set? The GMV result must be $5,907,937.05 over 1,679 orders for 4,492 eligible
+      canonical customers. The $20,470,260.68 result is identity fanout; 5,643 rows
+      is a useful diagnostic only when explicitly identified as the unsafe path.
+      For the two non-fact questions, reject alias-to-canonical grain confusion but
+      otherwise treat no-fanout as satisfied.
+
+notes: >
+  Grade against context/ground_truth/customer_identity_2021_migration.md and the
+  question's full canonical_answer. Calibrate the LLM judge against the deterministic
+  silent-value gate; explanatory trap values do not replace the canonical answer.

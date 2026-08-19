@@ -1,4 +1,4 @@
-# Eval questions for the revenue slice.
+# Eval questions for the revenue and customer-identity slices.
 #
 # Each question is an eval TRIPLE: a natural prompt that looks easy, a documented
 # trap (the silent-SQL failure it invites), and a pointer to authored ground truth
@@ -43,3 +43,74 @@ questions:
     trap: >
       "Actually collected" is a strong signal for collected_cash, but an agent
       anchored on a generic revenue definition may still return recognized/net.
+
+  - id: identity_customer_count_2025
+    prompt: >
+      How many customers did we have at the end of 2025 across Stripe, Salesforce,
+      Shopify, and the app? Give me the canonical business customer count, and also
+      report unresolved source IDs and the resolution null rate.
+    persona: operations
+    ground_truth: context/ground_truth/customer_identity_2021_migration.md
+    canonical_answer:
+      measure: ordered_canonical_customer_count
+      value: 4516
+      unresolved_source_id_count: 346
+      resolution_null_rate: 0.023405
+    context_required:
+      - context/guides/customer_identity.md
+      - context/semantic/customer_identity.view.lkml
+    pinned_scope: { as_of: "2025-12-31" }
+    trap: >
+      Counting raw IDs answers at alias grain (14,783), while an inner join silently
+      retains only 14,437 aliases. Counting all resolved app profiles returns 4,711,
+      including profiles with no orders. The business customer count is the 4,516
+      ordered canonical customers, with unresolved quality reported separately.
+    silent_fail_values: [14783, 14437, 4711]
+
+  - id: identity_pre_migration_shopify
+    prompt: >
+      Of the pre-migration Shopify customer IDs created before the 2021 identity migration, how
+      many are tied to an app customer as of the end of 2025, and how many are missing?
+    persona: data_platform
+    ground_truth: context/ground_truth/customer_identity_2021_migration.md
+    canonical_answer:
+      measure: pre_migration_shopify_resolved_count
+      value: 1650
+      missing_count: 208
+    context_required:
+      - context/guides/customer_identity.md
+      - context/semantic/customer_identity.view.lkml
+    pinned_scope:
+      migration_cutoff: "2021-07-01"
+      as_of: "2025-12-31"
+    trap: >
+      Returning all 1,858 observed pre-migration Shopify aliases ignores the planted
+      crosswalk gap; returning only the 208 missing aliases reverses the question.
+      The requested result is 1,650 tied IDs and 208 missing IDs.
+    silent_fail_values: [1858]
+
+  - id: identity_multi_source_gmv_2024
+    prompt: >
+      What was 2024 GMV from customers we could resolve in at least two distinct
+      source systems as of 2025-12-31? Include the order count and eligible canonical
+      customer count.
+    persona: finance
+    ground_truth: context/ground_truth/customer_identity_2021_migration.md
+    canonical_answer:
+      measure: correct_multi_source_gmv
+      value: 5907937.05
+      order_count: 1679
+      eligible_canonical_customer_count: 4492
+    context_required:
+      - context/guides/customer_identity.md
+      - context/semantic/customer_identity.view.lkml
+    pinned_scope:
+      gmv_start: "2024-01-01"
+      gmv_end: "2024-12-31"
+      as_of: "2025-12-31"
+    trap: >
+      Joining orders directly to the long resolved identity bridge fans each order
+      out once per alias, including historical Stripe aliases, and produces the
+      plausible but wrong $20,470,260.68 across 5,643 rows. Deduplicate the eligible
+      canonical customer set before filtering order facts.
+    silent_fail_values: [20470260.68]
