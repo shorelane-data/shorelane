@@ -37,14 +37,8 @@ import time
 from datetime import date, datetime, timezone
 
 import config
+from generators.dataset import RAW_TABLES
 from loaders.visibility import visible_tables
-
-RAW_TABLES = [
-    "app_db__orders",
-    "app_db__invoices",
-    "app_db__revenue_recognition",
-    "stripe__refunds",
-]
 
 RAW_SCHEMA = "shorelane_raw"
 
@@ -149,9 +143,9 @@ def main() -> None:
         # load_daily.py does too. Safe because generation is deterministic:
         # config.SEED pins it, so the in-memory frames are byte-identical to
         # data/raw for the same DATASET_VERSION.
-        from generators import orders
+        from generators import dataset
 
-        tables = orders.generate()
+        tables = dataset.generate()
     else:
         missing = [
             t for t in RAW_TABLES

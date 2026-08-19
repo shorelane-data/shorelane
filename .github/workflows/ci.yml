@@ -23,5 +23,6 @@ jobs:
         with:
           python-version: "3.11"
       - run: pip install -e .
+      - run: python tests/check_dataset_orchestration.py
       - run: python tests/check_table_stability.py
       - run: python tests/check_ground_truth.py

@@ -27,7 +27,8 @@ import os
 import pandas as pd
 
 import config
-from generators import orders as orders_gen
+from generators import dataset
+from generators.dataset import RAW_TABLES
 from generators.measures import five_revenues
 
 # Period filter options, keyed to a trailing window length in months (None = all).
@@ -45,21 +46,13 @@ CHANNEL_LABELS = {
     "marketplace": "Marketplace",
 }
 
-RAW_NAMES = [
-    "app_db__orders",
-    "app_db__invoices",
-    "app_db__revenue_recognition",
-    "stripe__refunds",
-]
-
-
 def load_tables() -> dict[str, pd.DataFrame]:
     """Prefer the generated Parquet in data/raw (what the warehouse loaded);
     fall back to regenerating in-memory. Both are the same deterministic source."""
-    if all(os.path.exists(os.path.join(config.RAW_DIR, f"{n}.parquet")) for n in RAW_NAMES):
-        tables = {n: pd.read_parquet(os.path.join(config.RAW_DIR, f"{n}.parquet")) for n in RAW_NAMES}
+    if all(os.path.exists(os.path.join(config.RAW_DIR, f"{n}.parquet")) for n in RAW_TABLES):
+        tables = {n: pd.read_parquet(os.path.join(config.RAW_DIR, f"{n}.parquet")) for n in RAW_TABLES}
     else:
-        tables = orders_gen.generate()
+        tables = dataset.generate()
     # Normalize date dtypes (Parquet round-trips fine; be defensive anyway).
     tables["app_db__orders"]["order_date"] = pd.to_datetime(tables["app_db__orders"]["order_date"])
     tables["app_db__revenue_recognition"]["recognition_date"] = pd.to_datetime(

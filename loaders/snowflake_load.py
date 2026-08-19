@@ -1,5 +1,5 @@
 """
-Snowflake mirror (marts only).
+Snowflake mirror (marts only; outside the canonical raw-table registry).
 
 Snowflake is your product's home turf and the second warehouse for the
 cross-tool / format-agnostic demo. You do NOT need the full stack here — mirror

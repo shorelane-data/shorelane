@@ -22,14 +22,8 @@ import os
 from datetime import date, datetime
 
 import config
+from generators.dataset import RAW_TABLES
 from loaders.visibility import visible_tables
-
-RAW_TABLES = [
-    "app_db__orders",
-    "app_db__invoices",
-    "app_db__revenue_recognition",
-    "stripe__refunds",
-]
 
 
 def _parse_as_of(value: str) -> date:
