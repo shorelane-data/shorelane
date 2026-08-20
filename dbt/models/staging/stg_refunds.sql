@@ -8,5 +8,6 @@ select
     refund_id,
     order_id,
     cast(refund_date as date)     as refund_date,
-    {{ money('refund_amount') }}  as refund_amount
+    {{ money('refund_amount') }}  as refund_amount,
+    stripe_customer_id
 from source

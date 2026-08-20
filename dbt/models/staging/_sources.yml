@@ -2,12 +2,13 @@ version: 2
 
 sources:
   - name: app_db
-    description: "Shorelane's own application database (orders, billing, rev-rec)."
-    # Must match the dataset the loader writes to (loaders/bigquery_load.py default
-    # --dataset shorelane_raw). dbt models materialize to the profile dataset
-    # (shorelane); raw landing tables live separately in shorelane_raw.
+    description: "Shorelane's application database: canonical customers, orders, billing, rev-rec, and the identity crosswalk."
     schema: shorelane_raw
     tables:
+      - name: app_db__customers
+        identifier: app_db__customers
+      - name: app_db__customer_id_crosswalk
+        identifier: app_db__customer_id_crosswalk
       - name: app_db__orders
         identifier: app_db__orders
       - name: app_db__invoices
@@ -16,8 +17,24 @@ sources:
         identifier: app_db__revenue_recognition
 
   - name: stripe
-    description: "Payment processor. Source of refunds (and, later, charges/disputes)."
+    description: "Payment processor customer identities and refunds."
     schema: shorelane_raw
     tables:
+      - name: stripe__customers
+        identifier: stripe__customers
       - name: stripe__refunds
         identifier: stripe__refunds
+
+  - name: shopify
+    description: "Commerce-platform source-native customer identities."
+    schema: shorelane_raw
+    tables:
+      - name: shopify__customers
+        identifier: shopify__customers
+
+  - name: salesforce
+    description: "CRM source-native customer identities."
+    schema: shorelane_raw
+    tables:
+      - name: salesforce__customers
+        identifier: salesforce__customers

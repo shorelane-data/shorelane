@@ -20,6 +20,26 @@ This repo ships one complete vertical slice: the **five revenues** trap, where a
 plain "what was our revenue?" has five individually-defensible answers and a naive
 agent picks one with false confidence. See `CLAUDE.md` for the full design contract.
 
+### Dataset release status
+
+The **shorelane-v3 local/generated release candidate** expands the raw
+fixture from four to nine tables with app, Stripe, Shopify, and Salesforce customer
+identities plus an intentionally incomplete customer-ID crosswalk. It also adds
+source-native Salesforce IDs to invoices and Stripe IDs to refunds. Generate those
+files locally with `make generate`; their exact landing contracts are in
+`raw_schema/revenue_slice.md` and `raw_schema/customer_identity.md`.
+
+The local generator-side eval triple is present: raw schemas, derived identity ground
+truth, a resolving guide and semantic artifact, and pinned questions/rubric. The
+portable dbt staging, identity bridge, safe customer dimension, quality mart, and
+singular tests are mirrored byte-for-byte from the reviewed `shorelane-dbt` PR #9
+commit recorded in `dbt/mirror_manifest.json`; run
+`python tests/check_dbt_mirror.py --canonical-root ../shorelane-dbt` to verify the
+sibling checkout. The identity vertical slice is still **not warehouse-complete**:
+the public BigQuery/private Redshift v3 migrations, loads, builds, and parity checks
+have not run. The package also remains at `2.2.0` until coordinated release. The
+public-demo instructions below describe the currently deployed warehouse surface.
+
 ## Public demo
 
 - **Fictional company site + live dashboard** — published via GitHub Pages
@@ -156,7 +176,8 @@ The warehouse connection runs through Google's
    the agent to list the tables in `nodal-shorelane.shorelane` — you should see
    `fct_revenue` and the four staging views.
 
-7. **Explore the schema.** Ask your agent (Claude Code, Codex, Gemini, …):
+7. **Explore the currently deployed public schema.** Ask your agent (Claude Code,
+   Codex, Gemini, …):
    *"What tables do you have access to?"* It should report two datasets in
    `nodal-shorelane`, nine tables in all:
 
@@ -183,7 +204,7 @@ pip install -e .
 make verify        # generates data + prints the five revenues for Q1 2024
 ```
 
-Expected (dataset shorelane-v2, SEED=20190401):
+Expected (dataset shorelane-v3, SEED=20190401):
 
 | measure | Q1 2024 |
 |---|---:|
@@ -199,6 +220,8 @@ If your numbers differ, the seed/economics changed — see "breaking changes" in
 ## What's here
 
 - `generators/` — seeded, deterministic data generation
+- `raw_schema/` — exact generated landing contracts for the revenue and customer-
+  identity tables
 - `dbt/` — staging + `fct_revenue` mart, one model set for both warehouses
 - `context/` — the Nodal layer: metric defs, LookML, personas, derived ground truth
 - `evals/` — questions + grading rubric for the revenue slice

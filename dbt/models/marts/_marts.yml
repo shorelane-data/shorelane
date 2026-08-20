@@ -9,20 +9,74 @@ models:
     columns:
       - name: activity_date
         description: "Date the dollar is attributed to (varies by measure)."
-        tests:
-          - not_null
+        tests: [not_null]
       - name: measure_name
-        description: "One of the five revenues. NB: there is no single 'revenue'."
+        description: "One of the five revenues. NB: there is no single revenue."
         tests:
           - not_null
           - accepted_values:
-              values:
-                - gmv
-                - net_revenue
-                - recognized_revenue
-                - billed_revenue
-                - collected_cash
+              values: [gmv, net_revenue, recognized_revenue, billed_revenue, collected_cash]
       - name: amount
         description: "Signed amount (refunds are negative rows)."
+        tests: [not_null]
+
+  - name: dim_customers
+    description: >
+      Safe customer dimension at exactly one row per canonical app ID. Unresolved
+      source aliases are not attributable and therefore cannot contribute to this
+      model. Historical Stripe aliases may make resolved_source_id_count exceed
+      four; resolved_source_system_count remains bounded by the four source systems.
+    columns:
+      - name: app_db_customer_id
+        description: "Canonical app customer primary key."
+        tests: [unique, not_null]
+      - name: first_seen_date
+        description: "Earliest creation date among resolved aliases, falling back to app creation."
+        tests: [not_null]
+      - name: has_order
+        description: "True when the canonical customer has at least one order."
+        tests: [not_null]
+      - name: resolved_source_id_count
+        description: "Resolved alias rows, including historical Stripe aliases."
+        tests: [not_null]
+      - name: resolved_source_system_count
+        description: "Distinct resolved source systems; use this rather than alias count for multi-source eligibility."
+        tests: [not_null]
+      - name: has_app_db
+        description: "True when the app_db self-alias is resolved for this canonical customer."
+        tests: [not_null]
+      - name: has_stripe
+        description: "True when at least one Stripe alias resolves to this canonical customer."
+        tests: [not_null]
+      - name: has_shopify
+        description: "True when at least one Shopify alias resolves to this canonical customer."
+        tests: [not_null]
+      - name: has_salesforce
+        description: "True when at least one Salesforce alias resolves to this canonical customer."
+        tests: [not_null]
+
+  - name: fct_identity_resolution_quality
+    description: >
+      One row per source system with observed, resolved, and unresolved alias counts
+      plus unresolved / observed. It preserves unresolved aliases by aggregating the
+      left-joined identity bridge.
+    columns:
+      - name: source_system
+        description: "Source namespace at the one-row-per-source-system mart grain."
         tests:
+          - unique
           - not_null
+          - accepted_values:
+              values: [app_db, stripe, shopify, salesforce]
+      - name: observed_id_count
+        description: "All observed source aliases, resolved and unresolved."
+        tests: [not_null]
+      - name: resolved_id_count
+        description: "Observed aliases with a retained canonical app mapping."
+        tests: [not_null]
+      - name: unresolved_id_count
+        description: "Observed aliases without an available canonical app mapping."
+        tests: [not_null]
+      - name: resolution_null_rate
+        description: "Unresolved aliases divided by observed aliases, guarded for zero observations."
+        tests: [not_null]

@@ -1,6 +1,6 @@
 # Ground truth — Executive Dashboard KPIs
 
-Dataset: **shorelane-v2** (SEED=20190401). These figures are **derived from the
+Dataset: **shorelane-v3** (SEED=20190401). These figures are **derived from the
 generated data** by `bi/dashboard_data.py`, not hand-authored. They are the
 source-of-truth numbers the interactive exec dashboard
 (`bi/plotly/business_dashboard.py`) renders, and what an agent's answer should be

@@ -135,10 +135,17 @@ notably `recognized_revenue` > `gmv` (ratable recognition from prior-period subs
 Add these next, each as a full eval triple, smallest-blast-radius first. For each:
 generate the mess (new RNG stream) → document raw schema → build staging/mart →
 author the resolving context artifact → derive ground truth → write eval + rubric.
+Generator and raw-schema work alone is groundwork, not a completed vertical slice;
+do not mark a debt item built until its full eval triple and warehouse models exist.
 
 1. **Identity fragmentation** — 2–4 IDs per customer across stripe / salesforce /
    shopify / app_db; a 2021 migration drops a fraction of the crosswalk. Trap:
    joins silently drop or double-count. Context: identity-resolution model + null-rate.
+   **In progress:** v3 local generation, `raw_schema/` contracts, derived ground truth,
+   resolving guide/LookML, eval/rubric, and the checksum-guarded canonical dbt mirror
+   from reviewed `shorelane-dbt` PR #9 exist. The public BigQuery/private Redshift v3
+   migrations, builds, and cross-warehouse parity have not run, and package version
+   `3.0.0` has not been released, so this is not a completed vertical slice.
 2. **OfficeMax acquisition** — an unmerged cohort with cents-vs-dollars and
    different status enums. Trap: unit/enum mismatch in sums and filters.
 3. **Channel rename 2022** — "direct" → "d2c" without backfill. Trap: one channel
@@ -153,16 +160,19 @@ author the resolving context artifact → derive ground truth → write eval + r
 Also add the missing source systems as you go (Salesforce, Shopify-legacy red
 herring, ad platforms, Zendesk) so prompts can read like real Slack messages.
 
-## Live infrastructure (v2)
+## Live infrastructure
 
-The v2 timeline runs past "today" (`END_DATE = 2027-12-31`) so a live pipeline
-can drip-feed the warehouse daily while the Parquet stays canonical:
+The timeline introduced in v2 runs past "today" (`END_DATE = 2027-12-31`) so a
+live pipeline can drip-feed the warehouse daily while the Parquet stays canonical:
 
 - **Arrival rule** lives in `loaders/visibility.py` (`visible_tables`): a row is
-  visible when its own event date ≤ as-of (`order_date`, `billed_date`,
-  `recognition_date`, `refund_date`). Exception: an invoice collected in the
-  future is visible but its `collected_date` is masked to NULL (Fivetran-style
-  late update; NULL + `is_bad_debt=false` = "pending").
+  visible when its table's registered arrival column is ≤ as-of: `order_date`,
+  `billed_date`, `recognition_date`, `refund_date`, customer `created_at`, or
+  crosswalk `linked_at`. Future updates on visible rows are masked. An invoice's
+  future `collected_date` becomes NULL (Fivetran-style late update; NULL means
+  pending when `is_bad_debt=false`, bad debt when `is_bad_debt=true`). A Stripe
+  customer's future `deactivated_at` becomes NULL and `is_active` is restored to
+  true until that deactivation timestamp arrives.
 - **Parity property**: for any period fully ≤ as-of, the filtered tables produce
   the same five revenues as `generators/measures.py` on the full Parquet. Never
   validate ground truth against a window that straddles the as-of date.
@@ -260,9 +270,11 @@ config.py                 seed, timeline, economics (the trap constants)
 generators/               seeded data generation
   common.py               make_rng(stream) — the determinism boundary
   orders.py               the five-revenues raw tables
+  identity.py             source-native customer identities + incomplete crosswalk
+  dataset.py              canonical ordered nine-table generator registry
   measures.py             reference impl of the five measures (CANONICAL)
-  emit.py                 → Parquet (+ optional GCS), derive ground truth
-raw_schema/               documented landing schemas
+  emit.py                 → Parquet (+ optional GCS), optionally print period measures
+raw_schema/               exact generated landing schemas (revenue + customer identity)
 dbt/                      local mirror of shorelane-dbt (canonical copy lives there)
   macros/money.sql        the ONLY dialect difference between the warehouses
 context/                  THE NODAL LAYER

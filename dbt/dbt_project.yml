@@ -1,5 +1,5 @@
 name: "shorelane"
-version: "1.0.0"
+version: "2.0.0"
 config-version: 2
 
 profile: "shorelane"
@@ -8,13 +8,21 @@ model-paths: ["models"]
 target-path: "target"
 clean-targets: ["target", "dbt_packages"]
 
+# Stamp every warehouse query so query-history extraction can classify this
+# traffic as dbt on BOTH channels: the default {"app": "dbt", ...} query comment
+# in the SQL text, and (job-label: true) the same keys as BigQuery job labels.
+query-comment:
+  job-label: true
+
 models:
   shorelane:
     staging:
       +materialized: view
+    intermediate:
+      +materialized: view
     marts:
       +materialized: table
 
-# Generation timeline, exposed to models via {{ var('...') }} if needed.
 vars:
-  dataset_version: "shorelane-v2"
+  dataset_version: "shorelane-v3"
+  identity_migration_date: "2021-07-01"
