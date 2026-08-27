@@ -5,6 +5,8 @@ name: pages
 #   /explore.html what-this-really-is page (public dataset, repo, nodal-context)
 #   /dashboard/  five-revenues Plotly dashboard, rendered --as-of today
 #   /business/   executive dashboard (KPIs + 5 charts, 4 periods), same as-of
+#   /customers/  customers dashboard (current customers by channel + identity
+#                health at the canonical grain), same as-of
 #   /dbt/manifest.json  parsed dbt manifest for context tools (no dbt install
 #                       needed to consume it; `dbt parse` needs no credentials)
 #
@@ -43,11 +45,12 @@ jobs:
       - run: pip install -e ".[bi,dbt]"
       - name: Assemble site
         run: |
-          mkdir -p _site/dashboard _site/business _site/dbt
+          mkdir -p _site/dashboard _site/business _site/customers _site/dbt
           cp context/website/index.html _site/index.html
           cp site/explore.html _site/explore.html
           python -m bi.plotly.revenue_dashboard --as-of today --out _site/dashboard/index.html
           python -m bi.plotly.business_dashboard_static --as-of today --out _site/business/index.html
+          python -m bi.plotly.customers_dashboard_static --as-of today --out _site/customers/index.html
           make manifest
           cp dbt/target/manifest.json _site/dbt/manifest.json
       - uses: actions/configure-pages@v5

@@ -1,0 +1,63 @@
+# Customer metric definitions — the disambiguation layer for "how many customers?"
+#
+# Companion to revenue.yml. "Customers" is ambiguous on two axes: WHICH grain
+# (canonical app customer vs per-system profile rows — the identity trap) and
+# WHICH recency rule ("current" vs ever). These are the human-confirmed answers
+# the customers dashboard (bi/customers_data.py, /customers/ on the Pages site)
+# renders. Keep this file and bi/customers_data.py in sync.
+
+concept: customers
+summary: >
+  All customer counts are at the CANONICAL grain: one app_db customer ID per
+  business customer (dim_customers). Counting rows in stripe/shopify/salesforce
+  customer tables, or joining raw source IDs, double- or under-counts — see
+  context/guides/customer_identity.md. An unqualified "how many customers?"
+  defaults to current_customers.
+
+canonical_default: current_customers
+canonical_grain: app_db__orders.customer_id == dim_customers.app_db_customer_id
+
+measures:
+  current_customers:
+    label: Current Customers
+    grain: point-in-time snapshot at a month end, canonical customer
+    definition: >
+      Distinct canonical customers with at least one order in the trailing 12
+      calendar months (window end inclusive, month grain). For the Business
+      Subscriptions channel this is the current-subscriber rule below; because
+      the subscription term is 12 months, the two rules coincide at month grain
+      and "current customers" is one consistent deduplicated series.
+    gotcha: >
+      Deduplicated across channels: a customer active in two channels counts
+      once. Per-channel current counts therefore sum to MORE than the total.
+
+  current_subscribers:
+    label: Current Subscribers
+    grain: point-in-time snapshot at a month end, canonical customer
+    definition: >
+      Distinct canonical customers with a business_subscription order whose
+      12-month ratable term (config.SUBSCRIPTION_TERM_MONTHS) covers the
+      snapshot month — i.e. a subscription order in the trailing 12 calendar
+      months. This is the subscription-channel member of current_customers.
+    gotcha: >
+      Not "customers with an uncollected invoice" and not a Stripe is_active
+      flag — Stripe activity describes payment-account aliases, not
+      subscription state, and recreated Stripe accounts make is_active
+      double-count if summed per row.
+
+  active_customers:
+    label: Active Customers (period)
+    grain: reporting period, canonical customer
+    definition: Distinct canonical customers with >=1 order inside the period.
+    gotcha: Period-relative, unlike the point-in-time current_customers.
+
+  new_customers:
+    label: New Customers (period)
+    grain: reporting period, canonical customer
+    definition: Canonical customers whose first-ever order falls in the period.
+
+resolution_rule: >
+  Resolve source-system IDs through app_db__customer_id_crosswalk (left join,
+  never inner) or use dim_customers directly. Shopify/Salesforce profiles
+  created before 2021-07-01 can be permanently unlinked (the 2021 migration
+  gap); treat unresolved aliases as unknown, never as extra customers.

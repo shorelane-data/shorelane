@@ -227,7 +227,11 @@ The repo is public and doubles as live marketing material:
   `/explore.html`, the five-revenues dashboard at `/dashboard/` rendered
   `--as-of today`, the static executive dashboard at `/business/` (same
   as-of; pre-rendered periods behind a JS switcher — chart builders shared
-  with the Dash app via `bi/plotly/figures.py`), and the parsed dbt manifest
+  with the Dash app via `bi/plotly/figures.py`), the customers dashboard at
+  `/customers/` (same as-of; current customers by channel at the canonical
+  grain plus an identity-health section — `bi/customers_data.py` +
+  `bi/plotly/customer_figures.py`, definitions in
+  `context/metrics/customers.yml`), and the parsed dbt manifest
   at `/dbt/manifest.json`
   (`make manifest` — `dbt parse` against the credential-free
   `dbt/profiles.parse/`, so context tools get the rich extraction input without

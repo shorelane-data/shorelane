@@ -42,11 +42,12 @@ dashboard: # render the free static Plotly dashboard (five revenues)
 	python -m bi.plotly.revenue_dashboard
 
 site: # assemble the public GitHub Pages site into _site/ (same steps as pages.yml)
-	mkdir -p _site/dashboard _site/business _site/dbt
+	mkdir -p _site/dashboard _site/business _site/customers _site/dbt
 	cp context/website/index.html _site/index.html
 	cp site/explore.html _site/explore.html
 	python -m bi.plotly.revenue_dashboard --as-of today --out _site/dashboard/index.html
 	python -m bi.plotly.business_dashboard_static --as-of today --out _site/business/index.html
+	python -m bi.plotly.customers_dashboard_static --as-of today --out _site/customers/index.html
 	$(MAKE) manifest
 	cp dbt/target/manifest.json _site/dbt/manifest.json
 
