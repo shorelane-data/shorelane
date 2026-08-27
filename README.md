@@ -46,9 +46,11 @@ public-demo instructions below describe the currently deployed warehouse surface
   (`.github/workflows/pages.yml`):
   [the marketing homepage](https://shorelane-data.github.io/shorelane/),
   [an explore-the-data page](https://shorelane-data.github.io/shorelane/explore.html),
-  the [five-revenues dashboard](https://shorelane-data.github.io/shorelane/dashboard/),
-  and the [executive dashboard](https://shorelane-data.github.io/shorelane/business/)
-  (KPIs + five charts across four period views), all re-rendered daily
+  the [executive dashboard](https://shorelane-data.github.io/shorelane/business/)
+  (KPIs + five charts across four period views), and the
+  [customers dashboard](https://shorelane-data.github.io/shorelane/customers/)
+  (current customers by channel at the canonical grain, plus identity health),
+  all re-rendered daily
   `--as-of today` so they match the live warehouse without any credentials in CI.
 - **Public BigQuery datasets** — `nodal-shorelane.shorelane_raw` (landing tables)
   and `nodal-shorelane.shorelane` (dbt marts incl. `fct_revenue`) are readable by

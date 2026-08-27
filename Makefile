@@ -1,12 +1,12 @@
 # Shorelane build pipeline. `make help` for targets.
 
-.PHONY: help install install-bq install-redshift generate verify load-bq load-redshift dbt manifest manifest-fetch dashboard site biz-dashboard validate-dashboard clean
+.PHONY: help install install-bq install-redshift generate verify load-bq load-redshift dbt manifest manifest-fetch site biz-dashboard validate-dashboard clean
 
 help:
 	@grep -E '^[a-zA-Z_-]+:.*?# .*$$' $(MAKEFILE_LIST) | sort | \
 		awk 'BEGIN{FS=":.*?# "}{printf "  %-14s %s\n", $$1, $$2}'
 
-install: # install core + Plotly BI deps (verify/generate/dashboard run after this)
+install: # install core + Plotly BI deps (verify/generate/site run after this)
 	pip install -e ".[bi]"
 
 install-bq: # extra deps for the BigQuery loader + dbt (only needed to load/model)
@@ -38,15 +38,12 @@ manifest-fetch: # fetch the published manifest.json (no dbt install needed)
 	mkdir -p dbt/target
 	curl -sf -o dbt/target/manifest.json https://shorelane-data.github.io/shorelane/dbt/manifest.json
 
-dashboard: # render the free static Plotly dashboard (five revenues)
-	python -m bi.plotly.revenue_dashboard
-
 site: # assemble the public GitHub Pages site into _site/ (same steps as pages.yml)
-	mkdir -p _site/dashboard _site/business _site/dbt
+	mkdir -p _site/business _site/customers _site/dbt
 	cp context/website/index.html _site/index.html
 	cp site/explore.html _site/explore.html
-	python -m bi.plotly.revenue_dashboard --as-of today --out _site/dashboard/index.html
 	python -m bi.plotly.business_dashboard_static --as-of today --out _site/business/index.html
+	python -m bi.plotly.customers_dashboard_static --as-of today --out _site/customers/index.html
 	$(MAKE) manifest
 	cp dbt/target/manifest.json _site/dbt/manifest.json
 
