@@ -45,9 +45,13 @@ migrated to v4 and its parity job is expected to be red until that follow-up.
   [the marketing homepage](https://shorelane-data.github.io/shorelane/),
   [an explore-the-data page](https://shorelane-data.github.io/shorelane/explore.html),
   the [executive dashboard](https://shorelane-data.github.io/shorelane/business/)
-  (KPIs + five charts across four period views), and the
+  (KPIs + five charts across four period views), the
   [customers dashboard](https://shorelane-data.github.io/shorelane/customers/)
   (current customers by channel at the canonical grain, plus identity health),
+  the [marketing dashboard](https://shorelane-data.github.io/shorelane/marketing/)
+  (GMV by channel, AOV, ad spend and CAC, category mix, promotions) and the
+  [FP&A subscriptions page](https://shorelane-data.github.io/shorelane/subscriptions/)
+  (active subscribers by plan generation, renewals, churn, ACV),
   all re-rendered daily
   `--as-of today` so they match the live warehouse without any credentials in CI.
 - **Public BigQuery datasets** — `nodal-shorelane.shorelane_raw` (landing tables)
@@ -227,7 +231,7 @@ If your numbers differ, the seed/economics changed — see "breaking changes" in
 - `evals/` — questions + grading rubrics (`refresh_questions.py` re-derives pinned values)
 - `loaders/` — warehouse loaders (BigQuery is the public one); `visibility.py`
   holds the arrival rule
-- `bi/` — dashboards (Looker Studio + Plotly)
+- `bi/` — Plotly dashboards (`plotly/`), analyst SQL (`ad-hoc/`), Looker Studio notes
 - `site/` — the explore page for the public GitHub Pages site
 
 The full design contract — architecture, warehouse policy, and the roadmap of

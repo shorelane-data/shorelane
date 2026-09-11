@@ -27,6 +27,8 @@ ground-truth: # re-derive EVERY committed ground-truth artifact from the generat
 	python -m generators.event_measures --output context/ground_truth/events.md
 	python -m bi.dashboard_data --anchor 2025-12 --output context/ground_truth/business_dashboard.md
 	python -m bi.customers_data --anchor 2025-12 --output context/ground_truth/customers_dashboard.md
+	python -m bi.marketing_data --anchor 2025-12 --output context/ground_truth/marketing_dashboard.md
+	python -m bi.subscriptions_data --anchor 2025-12 --output context/ground_truth/subscriptions_dashboard.md
 	python evals/refresh_questions.py
 	python evals/generate_demo_cases.py --org-id $${SHORELANE_ORG_ID:-SHORELANE_ORG_ID}
 	python tests/check_table_stability.py --update
@@ -59,11 +61,13 @@ manifest-fetch: # fetch the published manifest.json (no dbt install needed)
 	curl -sf -o dbt/target/manifest.json https://shorelane-data.github.io/shorelane/dbt/manifest.json
 
 site: # assemble the public GitHub Pages site into _site/ (same steps as pages.yml)
-	mkdir -p _site/business _site/customers _site/dbt
+	mkdir -p _site/business _site/customers _site/marketing _site/subscriptions _site/dbt
 	cp context/website/index.html _site/index.html
 	cp site/explore.html _site/explore.html
 	python -m bi.plotly.business_dashboard_static --as-of today --out _site/business/index.html
 	python -m bi.plotly.customers_dashboard_static --as-of today --out _site/customers/index.html
+	python -m bi.plotly.marketing_dashboard_static --as-of today --out _site/marketing/index.html
+	python -m bi.plotly.subscriptions_dashboard_static --as-of today --out _site/subscriptions/index.html
 	$(MAKE) manifest
 	cp dbt/target/manifest.json _site/dbt/manifest.json
 

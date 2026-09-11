@@ -36,22 +36,40 @@ FIG_CONFIG = {"displayModeBar": False, "responsive": True}
 
 def kpi_row(cur: dict, prev: dict | None) -> str:
     g = lambda k: (prev[k] if prev else None)
+
+    def opt(key: str, fmt) -> str:
+        return "—" if cur[key] is None else fmt(cur[key])
+
+    def delta(key: str) -> str:
+        return "" if cur[key] is None or g(key) is None else delta_html(cur[key], g(key))
+
     return "".join([
         kpi_card("Current Customers", fg.fmt_int(cur["current_customers"]),
-                 "Ordered in trailing 12 mo · dedup",
-                 delta_html(cur["current_customers"], g("current_customers"))),
-        kpi_card("Current Subscribers", fg.fmt_int(cur["current_subscribers"]),
-                 "Active subscription term",
-                 delta_html(cur["current_subscribers"], g("current_subscribers"))),
+                 "Ordered in trailing 12 mo", delta("current_customers")),
+        kpi_card("Current Subscribers", opt("current_subscribers", fg.fmt_int),
+                 "Active subscription term", delta("current_subscribers")),
         kpi_card("Active Customers", fg.fmt_int(cur["active_customers"]), "Ordered in period",
-                 delta_html(cur["active_customers"], g("active_customers"))),
+                 delta("active_customers")),
         kpi_card("New Customers", fg.fmt_int(cur["new_customers"]), "First order in period",
-                 delta_html(cur["new_customers"], g("new_customers"))),
+                 delta("new_customers")),
         kpi_card("Returning Share", fg.fmt_pct(cur["returning_share"]), "Actives with a prior order",
-                 delta_html(cur["returning_share"], g("returning_share"))),
-        kpi_card("Multi-Channel", fg.fmt_int(cur["multi_channel_customers"]), "≥2 channels in period",
-                 delta_html(cur["multi_channel_customers"], g("multi_channel_customers"))),
+                 delta("returning_share")),
+        kpi_card("Multi-Channel", opt("multi_channel_customers", fg.fmt_int), "≥2 channels in period",
+                 delta("multi_channel_customers")),
     ])
+
+
+def kpi_rows_by_channel(tables, start, end, pb) -> str:
+    """One pre-rendered KPI row per channel option; JS shows the selected one."""
+    options = [("All", None)] + [(label, ch) for ch, label, _ in cf.CHANNEL_SERIES]
+    out = []
+    for label, ch in options:
+        cur = cd.kpis(tables, start, end, channel=ch)
+        prev = cd.kpis(tables, pb[0], pb[1], channel=ch) if pb else None
+        display = "flex" if ch is None else "none"
+        out.append(f'<div class="kpi-row kpi-channel" data-channel="{label}" style="display:{display}">'
+                   f"{kpi_row(cur, prev)}</div>")
+    return "".join(out)
 
 
 def chart_card(title: str, fig, width: str, channel_aware: bool = False) -> str:
@@ -84,7 +102,7 @@ def period_section(tables, monthly: pd.DataFrame, period: str, end_month: pd.Tim
     return (
         f'<div class="period-section" id="sec-{period.replace(" ", "-")}" style="display:{display}">'
         f'<div class="ctx">{ctx}</div>'
-        f'<div class="kpi-row">{kpi_row(cur, prev)}</div>'
+        f'{kpi_rows_by_channel(tables, start, end, pb)}'
         f'<div class="charts">{charts}</div></div>'
     )
 
@@ -197,6 +215,9 @@ function setChannel(label, btn) {{
   applyChannelFilter();
 }}
 function applyChannelFilter() {{
+  document.querySelectorAll('.kpi-channel').forEach(function(row) {{
+    row.style.display = (row.dataset.channel === channelFilter) ? 'flex' : 'none';
+  }});
   document.querySelectorAll('.channel-aware .js-plotly-plot').forEach(function(gd) {{
     if (!gd.data) return;
     var vis = gd.data.map(function(t) {{
@@ -257,7 +278,8 @@ def main() -> None:
     footer = (
         (f"Data as of {as_of.date()}" if as_of is not None else "Full dataset")
         + ' · <a href="../explore.html">About this data</a> · '
-        + '<a href="../business/">Executive dashboard</a>'
+        + '<a href="../business/">Executive dashboard</a> · <a href="../marketing/">Marketing</a> · '
+        + '<a href="../subscriptions/">Subscriptions</a>'
     )
 
     html = PAGE.format(
