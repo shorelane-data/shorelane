@@ -1,11 +1,11 @@
 """
-Shorelane Commerce — Executive Dashboard (the source-of-truth BI surface).
+Shorelane Commerce — Executive Dashboard.
 
 An interactive Plotly Dash app meant to look like a real company BI dashboard:
 KPI scorecards + charts that all recompute when you change the period filter.
-Headline "Revenue" is recognized_revenue (GAAP) — the canonical measure from
-context/metrics/revenue.yml — so this is the trusted number an agent's answer is
-validated against.
+Headline "Revenue" is recognized_revenue (GAAP). The page itself carries no
+metric definitions on purpose — like most company dashboards, the meaning of
+the tiles is tribal knowledge that lives in context/metrics/, not on the page.
 
 All figures are DERIVED from bi/dashboard_data.py (same deterministic source as
 the warehouse). Validate with:  python -m bi.dashboard_data
@@ -138,7 +138,7 @@ app.layout = html.Div([
                 html.Div("Executive Revenue Dashboard", className="sub"),
             ]),
         ]),
-        html.Div("● Source of truth · Recognized revenue (GAAP)", className="badge"),
+        html.Div("● Revenue · Recognized (GAAP)", className="badge"),
     ]),
     html.Div(className="controls", children=[
         html.Div(id="ctx-line", className="ctx"),

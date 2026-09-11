@@ -108,13 +108,7 @@ def identity_section(idq: dict, as_of_label: str) -> str:
     return f"""
 <div class="section-head">
   <h2>Identity health <span class="asof">as of {as_of_label}</span></h2>
-  <p>Every customer above is counted at the <b>canonical grain</b> (one app_db ID per
-  business customer). The same customer holds 2–4 IDs across Stripe, Shopify,
-  Salesforce and app_db, and the 2021 migration permanently dropped a slice of the
-  Shopify/Salesforce crosswalk — so summing per-system "customers", or inner-joining
-  raw source IDs, silently over- or under-counts. See the
-  <a href="https://github.com/shorelane-data/shorelane/blob/main/context/guides/customer_identity.md">identity
-  resolution guide</a> and <code>dim_customers</code> / <code>fct_identity_resolution_quality</code>.</p>
+  <p>Source-system customer IDs (Stripe, Shopify, Salesforce) resolved to app_db customers.</p>
 </div>
 <div class="kpi-row">{kpis_html}</div>
 <div class="charts">{charts}</div>
@@ -170,7 +164,7 @@ PAGE = """<!DOCTYPE html>
     <div class="logo">🌊</div>
     <div><h1>Shorelane Commerce</h1><div class="sub">Customers Dashboard</div></div>
   </div>
-  <div class="badge">● Source of truth · Canonical customer grain{asof_badge}</div>
+  <div class="badge">● Customers{asof_badge}</div>
 </div>
 <div class="controls">
   <span class="plabel">Period</span>
@@ -181,10 +175,7 @@ PAGE = """<!DOCTYPE html>
 <div class="defs">
   <b>Current customer</b> — placed ≥1 order in the trailing 12 calendar months
   (Direct-to-Consumer and Marketplace). &nbsp;<b>Current subscriber</b> — a Business
-  Subscription whose 12-month term covers the month; with a 12-month term this equals a
-  subscription order in the trailing 12 months. &nbsp;All counts deduplicate to one
-  canonical <code>app_db</code> customer ID — a customer buying in two channels counts once
-  in totals. Definitions: <a href="https://github.com/shorelane-data/shorelane/blob/main/context/metrics/customers.yml">context/metrics/customers.yml</a>.
+  Subscription whose 12-month term covers the month.
 </div>
 {sections}
 {identity}
@@ -264,12 +255,8 @@ def main() -> None:
 
     asof_badge = f" · as of {as_of.date()}" if as_of is not None else ""
     footer = (
-        f"Figures derived from the seeded generators (dataset {config.DATASET_VERSION}, SEED={config.SEED})"
-        + (f", filtered by the warehouse arrival rule as of {as_of.date()} — by the parity property this page "
-           f"equals the live warehouse, with no credentials involved" if as_of is not None else "")
-        + '. Validate with: <code>python -m bi.customers_data --anchor '
-        + end_month.strftime("%Y-%m")
-        + '</code> · <a href="../explore.html">About this data</a> · '
+        (f"Data as of {as_of.date()}" if as_of is not None else "Full dataset")
+        + ' · <a href="../explore.html">About this data</a> · '
         + '<a href="../business/">Executive dashboard</a>'
     )
 
