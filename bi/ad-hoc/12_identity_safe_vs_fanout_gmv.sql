@@ -3,6 +3,9 @@
 -- Rule: derive the deduplicated canonical customer set first, then filter orders.
 --       Joining orders to the long alias bridge counts each order once per alias
 --       (historical Stripe ids included) and inflates GMV several-fold.
+-- Note: this uses real customers only (fct_orders) and the crosswalk as loaded
+--       today, so the "safe" figure is a little below the pinned as-of-2025-12-31
+--       reference in context/ground_truth/customer_identity_2021_migration.md.
 WITH eligible AS (
   SELECT app_db_customer_id
   FROM `nodal-shorelane.shorelane.int_customer_identity`
