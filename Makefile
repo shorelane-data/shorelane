@@ -1,6 +1,6 @@
 # Shorelane build pipeline. `make help` for targets.
 
-.PHONY: help install install-bq install-redshift generate verify load-bq load-redshift dbt manifest manifest-fetch site biz-dashboard validate-dashboard clean
+.PHONY: help install install-bq install-redshift generate verify ground-truth test load-bq load-redshift dbt manifest manifest-fetch site biz-dashboard validate-dashboard clean
 
 help:
 	@grep -E '^[a-zA-Z_-]+:.*?# .*$$' $(MAKEFILE_LIST) | sort | \
@@ -20,6 +20,26 @@ generate: # generate raw Parquet into data/raw
 
 verify: # generate + print the five revenues for the target period
 	python -m generators.emit --period
+
+ground-truth: # re-derive EVERY committed ground-truth artifact from the generators (breaking-change ritual)
+	python -m generators.emit --ground-truth context/ground_truth/revenue_q1_2024.md
+	python -m generators.identity_measures --output context/ground_truth/customer_identity_2021_migration.md
+	python -m generators.event_measures --output context/ground_truth/events.md
+	python -m bi.dashboard_data --anchor 2025-12 --output context/ground_truth/business_dashboard.md
+	python -m bi.customers_data --anchor 2025-12 --output context/ground_truth/customers_dashboard.md
+	python evals/refresh_questions.py
+	python evals/generate_demo_cases.py --org-id $${SHORELANE_ORG_ID:-SHORELANE_ORG_ID}
+	python tests/check_table_stability.py --update
+
+test: # run every contract check (what CI runs)
+	python tests/check_table_stability.py
+	python tests/check_dataset_orchestration.py
+	python tests/check_ground_truth.py
+	python tests/check_identity_generation.py
+	python tests/check_identity_ground_truth.py
+	python tests/check_identity_eval.py
+	python tests/check_event_ground_truth.py
+	python tests/check_dbt_mirror.py
 
 load-bq: # load raw Parquet into BigQuery (set PROJECT=...)
 	python -m loaders.bigquery_load --project $(PROJECT)

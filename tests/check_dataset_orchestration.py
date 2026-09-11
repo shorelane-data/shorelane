@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Contract check for the canonical nine-table dataset and arrival rules."""
+"""Contract check for the canonical nineteen-table dataset and arrival rules."""
 from __future__ import annotations
 
 import sys
@@ -10,26 +10,46 @@ from generators import dataset, orders
 from loaders.visibility import ARRIVAL_COLUMNS, visible_tables
 
 EXPECTED_RAW_TABLES = (
+    "app_db__customers",
+    "app_db__products",
     "app_db__orders",
+    "app_db__order_lines",
+    "app_db__plans",
+    "app_db__plan_prices",
+    "app_db__subscriptions",
     "app_db__invoices",
     "app_db__revenue_recognition",
+    "app_db__promotions",
     "stripe__refunds",
-    "app_db__customers",
+    "erp__suppliers",
+    "erp__supplier_shipments",
+    "ads__daily_spend",
     "stripe__customers",
     "shopify__customers",
     "salesforce__customers",
     "app_db__customer_id_crosswalk",
+    "zendesk__tickets",
 )
 EXPECTED_ARRIVALS = {
+    "app_db__customers": "created_at",
+    "app_db__products": "introduced_at",
     "app_db__orders": "order_date",
+    "app_db__order_lines": "created_at",
+    "app_db__plans": "launched_at",
+    "app_db__plan_prices": "effective_from",
+    "app_db__subscriptions": "term_start",
     "app_db__invoices": "billed_date",
     "app_db__revenue_recognition": "recognition_date",
+    "app_db__promotions": "start_date",
     "stripe__refunds": "refund_date",
-    "app_db__customers": "created_at",
+    "erp__suppliers": "onboarded_at",
+    "erp__supplier_shipments": "expected_date",
+    "ads__daily_spend": "spend_date",
     "stripe__customers": "created_at",
     "shopify__customers": "created_at",
     "salesforce__customers": "created_at",
     "app_db__customer_id_crosswalk": "linked_at",
+    "zendesk__tickets": "created_at",
 }
 
 
@@ -49,7 +69,7 @@ def main() -> int:
         try:
             pd.testing.assert_frame_equal(canonical[name][list(frame.columns)], frame)
         except AssertionError as exc:
-            failures.append(f"{name}: legacy columns/values changed: {exc}")
+            failures.append(f"{name}: commerce columns/values changed: {exc}")
 
     original_generate = orders.generate
     calls = 0
@@ -88,6 +108,12 @@ def main() -> int:
             arrival = ARRIVAL_COLUMNS[name]
             if (frame[arrival] > cutoff).any():
                 failures.append(f"{name}: row later than {as_of} is visible")
+        subs = visible["app_db__subscriptions"]
+        if (subs.loc[subs.term_end >= cutoff, "status"] != "active").any():
+            failures.append(f"subscriptions: a running term leaks its future status at {as_of}")
+        tickets = visible["zendesk__tickets"]
+        if (tickets.resolved_at > cutoff).any():
+            failures.append(f"tickets: future resolved_at visible at {as_of}")
         visible_sources = {
             "app_db": set(visible["app_db__customers"].app_db_customer_id),
             "stripe": set(visible["stripe__customers"].stripe_customer_id),
@@ -110,7 +136,7 @@ def main() -> int:
     print("Dataset orchestration check")
     for name in EXPECTED_RAW_TABLES:
         print(f"  {name:<36} rows={len(canonical[name]):>6}  OK")
-    print("\nnine-table registry, legacy preservation, single delegation, and as-of visibility hold")
+    print("\nnineteen-table registry, commerce preservation, single delegation, and as-of visibility hold")
     return 0
 
 

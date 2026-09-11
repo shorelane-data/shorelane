@@ -1,11 +1,12 @@
 #!/usr/bin/env python3
-"""Characterization guard for the four legacy revenue tables.
+"""Characterization guard for the commerce tables emitted by generators/orders.py.
 
 This check deliberately freezes generator output independently of warehouse parity
 and committed Markdown ground truth. Canonical scalar encoding avoids pandas CSV
 formatting differences for nulls, timestamps, booleans, and IEEE-754 floats.
 
-    python tests/check_table_stability.py
+    python tests/check_table_stability.py            # verify
+    python tests/check_table_stability.py --update   # re-freeze after an INTENDED breaking change
 """
 from __future__ import annotations
 
@@ -29,22 +30,52 @@ MANIFEST = pathlib.Path(__file__).with_name("table_stability_manifest.json")
 PERIOD = ("2024-01-01", "2024-03-31")
 
 PRIMARY_KEYS = {
+    "app_db__customers": ["app_db_customer_id"],
+    "app_db__products": ["sku"],
     "app_db__orders": ["order_id"],
+    "app_db__order_lines": ["order_line_id"],
+    "app_db__plans": ["plan_id"],
+    "app_db__plan_prices": ["plan_id", "effective_from"],
+    "app_db__subscriptions": ["subscription_id"],
     "app_db__invoices": ["invoice_id"],
     "app_db__revenue_recognition": ["order_id", "recognition_date"],
+    "app_db__promotions": ["promo_code"],
     "stripe__refunds": ["refund_id"],
+    "erp__suppliers": ["supplier_id"],
+    "erp__supplier_shipments": ["shipment_id"],
+    "ads__daily_spend": ["spend_date", "platform"],
 }
 MONEY_COLUMNS = {
+    "app_db__customers": [],
+    "app_db__products": ["unit_cost", "list_price"],
     "app_db__orders": ["gross_amount", "take_rate", "net_amount"],
+    "app_db__order_lines": ["unit_price", "discount_pct", "line_amount"],
+    "app_db__plans": [],
+    "app_db__plan_prices": ["annual_price_per_seat"],
+    "app_db__subscriptions": ["price_per_seat", "acv"],
     "app_db__invoices": ["amount"],
     "app_db__revenue_recognition": ["amount"],
+    "app_db__promotions": ["discount_pct"],
     "stripe__refunds": ["refund_amount"],
+    "erp__suppliers": [],
+    "erp__supplier_shipments": [],
+    "ads__daily_spend": ["spend_usd"],
 }
 DATE_COLUMNS = {
+    "app_db__customers": ["created_at"],
+    "app_db__products": ["introduced_at"],
     "app_db__orders": ["order_date"],
+    "app_db__order_lines": ["created_at"],
+    "app_db__plans": ["launched_at", "retired_at"],
+    "app_db__plan_prices": ["effective_from"],
+    "app_db__subscriptions": ["term_start", "term_end", "cancelled_at"],
     "app_db__invoices": ["billed_date", "due_date", "collected_date"],
     "app_db__revenue_recognition": ["recognition_date"],
+    "app_db__promotions": ["start_date", "end_date"],
     "stripe__refunds": ["refund_date"],
+    "erp__suppliers": ["onboarded_at"],
+    "erp__supplier_shipments": ["expected_date", "received_date"],
+    "ads__daily_spend": ["spend_date"],
 }
 REVENUE_KEYS = [
     "gmv",
@@ -66,7 +97,7 @@ MANIFEST_TABLE_FIELDS = {
 
 def _canonical_scalar(value: Any) -> str:
     """Encode supported pandas scalar values without display-format dependence."""
-    if value is None or value is pd.NaT:
+    if value is None or value is pd.NaT or value is pd.NA:
         return "null"
     if isinstance(value, (pd.Timestamp, datetime, date, np.datetime64)):
         timestamp = pd.Timestamp(value)
@@ -159,7 +190,22 @@ def manifest_errors(expected: dict[str, Any]) -> list[str]:
     return errors
 
 
-def main() -> int:
+def main(argv: list[str] | None = None) -> int:
+    argv = sys.argv[1:] if argv is None else argv
+    tables = orders.generate()
+    if set(tables) != set(PRIMARY_KEYS):
+        print(f"commerce tables changed: expected {sorted(PRIMARY_KEYS)!r}, got {sorted(tables)!r}")
+        return 1
+    actual_tables = characterize(tables)
+    actual_revenues = five_revenues(tables, *PERIOD)
+
+    if "--update" in argv:
+        MANIFEST.write_text(json.dumps(
+            {"tables": actual_tables, "q1_2024_five_revenues": actual_revenues},
+            indent=2, sort_keys=True) + "\n", encoding="utf-8")
+        print(f"re-froze {len(actual_tables)} tables + Q1 2024 revenues into {MANIFEST.name}")
+        return 0
+
     expected = json.loads(MANIFEST.read_text(encoding="utf-8"))
     failures = manifest_errors(expected)
     if failures:
@@ -168,21 +214,7 @@ def main() -> int:
             print(f"  - {failure}")
         return 1
 
-    tables = orders.generate()
-    if set(tables) != set(expected["tables"]):
-        print("Legacy table stability check FAILED:")
-        print(
-            f"  table names: expected {list(expected['tables'])!r}, "
-            f"got {list(tables)!r}"
-        )
-        return 1
-
-    actual_tables = characterize(tables)
-    actual_revenues = five_revenues(tables, *PERIOD)
-
-    failures = []
-
-    print("Legacy table stability check")
+    print("Commerce table stability check")
     for name, wanted in expected["tables"].items():
         got = actual_tables.get(name)
         if got is None:
@@ -190,7 +222,7 @@ def main() -> int:
             continue
         mismatches = [key for key, value in wanted.items() if got.get(key) != value]
         status = "OK" if not mismatches else f"MISMATCH ({', '.join(mismatches)})"
-        print(f"  {name:<36} rows={got['row_count']:>6}  {status}")
+        print(f"  {name:<36} rows={got['row_count']:>8,}  {status}")
         for key in mismatches:
             failures.append(f"{name}.{key}: expected {wanted[key]!r}, got {got.get(key)!r}")
 
@@ -207,9 +239,11 @@ def main() -> int:
         print("\nTable stability check FAILED:")
         for failure in failures:
             print(f"  - {failure}")
+        print("\nIf this change was intended (a breaking dataset release), bump DATASET_VERSION,\n"
+              "re-derive every file in context/ground_truth/, and run with --update.")
         return 1
 
-    print("\nall legacy table schemas, rows, hashes, and revenues are stable")
+    print("\nall commerce table schemas, rows, hashes, and revenues are stable")
     return 0
 
 

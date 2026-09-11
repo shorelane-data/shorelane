@@ -8,7 +8,7 @@ python -m generators.identity_measures --output context/ground_truth/customer_id
 
 ## Pinned scope and grains
 
-- **Dataset:** `shorelane-v3` with seed `20190401`.
+- **Dataset:** `shorelane-v4` with seed `20190401`.
 - **Identity migration cutoff:** **2021-07-01**.
 - **Snapshot:** rows visible as of **2025-12-31**, using `loaders.visibility.visible_tables` over `generators.dataset.generate()`.
 - **Observed source ID grain:** one visible source customer row keyed by `(source_system, source_customer_id)` across `app_db`, `stripe`, `shopify`, and `salesforce`.
@@ -24,25 +24,25 @@ python -m generators.identity_measures --output context/ground_truth/customer_id
 
 | Measure | Derived value |
 |---|---:|
-| Observed source-ID count | 14,783 |
-| Naive distinct raw source-ID count (source namespace ignored) | 14,783 |
-| Inner-join retained / resolved source-ID count | 14,437 |
-| Unresolved source-ID count | 346 |
-| Resolution null rate | 0.023405 |
-| Distinct resolved canonical app IDs | 4,711 |
-| Ordered canonical customer count as of snapshot | 4,516 |
+| Observed source-ID count | 70,975 |
+| Naive distinct raw source-ID count (source namespace ignored) | 70,975 |
+| Inner-join retained / resolved source-ID count | 69,795 |
+| Unresolved source-ID count | 1,180 |
+| Resolution null rate | 0.016626 |
+| Distinct resolved canonical app IDs | 25,359 |
+| Ordered canonical customer count as of snapshot | 22,628 |
 
 ## Pre-migration Shopify crosswalk
 
 | Measure | Derived value |
 |---|---:|
-| Observed pre-migration Shopify IDs | 1,858 |
-| Resolved pre-migration Shopify IDs | 1,650 |
-| Missing pre-migration Shopify IDs | 208 |
+| Observed pre-migration Shopify IDs | 4,567 |
+| Resolved pre-migration Shopify IDs | 4,034 |
+| Missing pre-migration Shopify IDs | 533 |
 
 ## 2024 multi-source customer GMV: correct vs unsafe
 
 | Path | Canonical customers | Order rows | GMV |
 |---|---:|---:|---:|
-| Correct (deduplicated canonical customer set) | 4,492 | 1,679 | $5,907,937.05 |
-| Unsafe alias-bridge fanout | — | 5,643 | $20,470,260.68 |
+| Correct (deduplicated canonical customer set) | 22,393 | 13,195 | $25,733,431.14 |
+| Unsafe alias-bridge fanout | — | 43,501 | $91,761,496.64 |

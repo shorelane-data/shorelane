@@ -30,3 +30,4 @@ jobs:
       - run: python tests/check_ground_truth.py
       - run: python tests/check_identity_ground_truth.py
       - run: python tests/check_identity_eval.py
+      - run: python tests/check_event_ground_truth.py
