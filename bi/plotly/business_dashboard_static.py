@@ -205,7 +205,8 @@ def main() -> None:
     footer = (
         (f"Data as of {as_of.date()}" if as_of is not None else "Full dataset")
         + ' · <a href="../explore.html">About this data</a> · '
-        + '<a href="../customers/">Customers dashboard</a>'
+        + '<a href="../customers/">Customers</a> · <a href="../marketing/">Marketing</a> · '
+        + '<a href="../subscriptions/">Subscriptions</a>'
     )
 
     html = PAGE.format(

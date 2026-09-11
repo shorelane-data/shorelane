@@ -7,6 +7,10 @@ name: pages
 #                --as-of today
 #   /customers/  customers dashboard (current customers by channel + identity
 #                health at the canonical grain), same as-of
+#   /marketing/  marketing dashboard (GMV by channel, AOV, ad spend, CAC,
+#                category mix, promotions), same as-of
+#   /subscriptions/  FP&A subscriptions page (active subscribers by plan
+#                generation, renewals, churn, ACV), same as-of
 #   /dbt/manifest.json  parsed dbt manifest for context tools (no dbt install
 #                       needed to consume it; `dbt parse` needs no credentials)
 #
@@ -45,11 +49,13 @@ jobs:
       - run: pip install -e ".[bi,dbt]"
       - name: Assemble site
         run: |
-          mkdir -p _site/business _site/customers _site/dbt
+          mkdir -p _site/business _site/customers _site/marketing _site/subscriptions _site/dbt
           cp context/website/index.html _site/index.html
           cp site/explore.html _site/explore.html
           python -m bi.plotly.business_dashboard_static --as-of today --out _site/business/index.html
           python -m bi.plotly.customers_dashboard_static --as-of today --out _site/customers/index.html
+          python -m bi.plotly.marketing_dashboard_static --as-of today --out _site/marketing/index.html
+          python -m bi.plotly.subscriptions_dashboard_static --as-of today --out _site/subscriptions/index.html
           make manifest
           cp dbt/target/manifest.json _site/dbt/manifest.json
       - uses: actions/configure-pages@v5

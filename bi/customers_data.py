@@ -116,27 +116,50 @@ def monthly_customer_metrics(tables: dict[str, pd.DataFrame]) -> pd.DataFrame:
     return df.reset_index()
 
 
-def kpis(tables: dict[str, pd.DataFrame], start: pd.Timestamp, end: pd.Timestamp) -> dict[str, float]:
+def kpis(tables: dict[str, pd.DataFrame], start: pd.Timestamp, end: pd.Timestamp,
+         channel: str | None = None) -> dict[str, float | None]:
     """Headline customer KPI bundle for a period. 'Current' figures are the
-    point-in-time snapshot at the period's last month."""
+    point-in-time snapshot at the period's last month.
+
+    With ``channel`` set, every count is restricted to that channel: current =
+    ordered in that channel in the trailing window; active = ordered in that
+    channel in the period; new = first-ever order (any channel) fell in the
+    period AND was placed in that channel. Current subscribers is only defined
+    for business_subscription and multi-channel is undefined for a single
+    channel (both returned as None)."""
     o = _orders_with_month(tables)
     s = current_sets(o, end.to_period("M").to_timestamp())
-
-    in_p = o[(o.order_date >= start) & (o.order_date <= end)]
-    active = int(in_p.customer_id.nunique())
     first_order = o.groupby("customer_id").order_date.min()
-    new = int(((first_order >= start) & (first_order <= end)).sum())
-    multi = int((in_p.groupby("customer_id").channel.nunique() >= 2).sum())
+    in_p = o[(o.order_date >= start) & (o.order_date <= end)]
 
+    if channel is None:
+        active = int(in_p.customer_id.nunique())
+        new = int(((first_order >= start) & (first_order <= end)).sum())
+        multi = int((in_p.groupby("customer_id").channel.nunique() >= 2).sum())
+        return {
+            "current_customers": len(s["total"]),
+            "current_subscribers": len(s["business_subscription"]),
+            "current_d2c": len(s["d2c"]),
+            "current_marketplace": len(s["marketplace"]),
+            "active_customers": active,
+            "new_customers": new,
+            "returning_share": round(1 - new / active, 4) if active else 0.0,
+            "multi_channel_customers": multi,
+        }
+
+    ch = in_p[in_p.channel == channel]
+    active = int(ch.customer_id.nunique())
+    is_first = ch.order_date.values == first_order.reindex(ch.customer_id.values).values
+    new = int(ch.loc[is_first, "customer_id"].nunique())
     return {
-        "current_customers": len(s["total"]),
-        "current_subscribers": len(s["business_subscription"]),
+        "current_customers": len(s[channel]),
+        "current_subscribers": len(s["business_subscription"]) if channel == "business_subscription" else None,
         "current_d2c": len(s["d2c"]),
         "current_marketplace": len(s["marketplace"]),
         "active_customers": active,
         "new_customers": new,
         "returning_share": round(1 - new / active, 4) if active else 0.0,
-        "multi_channel_customers": multi,
+        "multi_channel_customers": None,
     }
 
 
