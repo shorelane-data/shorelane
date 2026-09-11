@@ -1,11 +1,11 @@
 {
   "canonical_repo_url": "https://github.com/shorelane-data/shorelane-dbt.git",
-  "canonical_commit": "c8a0a3f69fa10e21ca106bc278f583ab1fb3d771",
+  "canonical_commit": "7f6388172abad8a236bdf30c9aae682b9ae2a896",
   "files": [
     {
       "source": "dbt_project.yml",
       "mirror": "dbt/dbt_project.yml",
-      "sha256": "d35aa45a2f1a6bcc7d2ccc1c854cd31720d7e314c2f9af00efbd9cb3dbafe59a"
+      "sha256": "b700c99c1b32f2eeaccb91816d2a43796dbabbaf60fdc9939de76d33bdde5c0a"
     },
     {
       "source": "macros/money.sql",
@@ -30,12 +30,27 @@
     {
       "source": "models/marts/_marts.yml",
       "mirror": "dbt/models/marts/_marts.yml",
-      "sha256": "f978bda8b96c480b88d5c0acec2b8a247f5c3ec8b41d0d30c2c32fe8cfa3d539"
+      "sha256": "6d9de5f6fa1cc425c01bb5adda9e5a447c3f409b539a298e805cb6176dfbc140"
     },
     {
       "source": "models/marts/dim_customers.sql",
       "mirror": "dbt/models/marts/dim_customers.sql",
-      "sha256": "ce21e553f10b42c9601352628ee7c84bf3676b40d5e0a3004a665ae3c07a5b98"
+      "sha256": "165a755108d9f45e4d72625f96a92314d013af2268190e21a8673effc52cd395"
+    },
+    {
+      "source": "models/marts/dim_date.sql",
+      "mirror": "dbt/models/marts/dim_date.sql",
+      "sha256": "86eb8b377f8c5eed60e6dbc4b70937568f7c1ab5695419f5ca8d20efbe9f2677"
+    },
+    {
+      "source": "models/marts/dim_plans.sql",
+      "mirror": "dbt/models/marts/dim_plans.sql",
+      "sha256": "e70baf1163fd72270f27ea6bd9357f017dafc16e986021f267709cc9ec23f7c0"
+    },
+    {
+      "source": "models/marts/dim_products.sql",
+      "mirror": "dbt/models/marts/dim_products.sql",
+      "sha256": "028be7230dbc6e4ebc5155a4514156cc39a01430409a3ed647155525a6f4a9f6"
     },
     {
       "source": "models/marts/fct_identity_resolution_quality.sql",
@@ -43,24 +58,49 @@
       "sha256": "6906ae65664bfa81b53cc97fd56c8170a737fb431f4c6ba9971ed42fb8567b59"
     },
     {
+      "source": "models/marts/fct_marketing_spend.sql",
+      "mirror": "dbt/models/marts/fct_marketing_spend.sql",
+      "sha256": "888b199503092b95787bd8429349acc6fea8aca4bff47614f175d7ba651ddbcf"
+    },
+    {
+      "source": "models/marts/fct_order_lines.sql",
+      "mirror": "dbt/models/marts/fct_order_lines.sql",
+      "sha256": "7a1402000f6125d03305b7e689c187e5774a41674889f87ea55e5864af03f8e9"
+    },
+    {
+      "source": "models/marts/fct_orders.sql",
+      "mirror": "dbt/models/marts/fct_orders.sql",
+      "sha256": "7645231fc9748aec1994770b59b74264e9e1c7fbd0a243a0012e1bd6724d5b26"
+    },
+    {
       "source": "models/marts/fct_revenue.sql",
       "mirror": "dbt/models/marts/fct_revenue.sql",
-      "sha256": "c4f439e21e747d98714afef93e1c8e2090bc1c118d79e06f284aa38dc62e7bc2"
+      "sha256": "164c8a748c3169dc63fbc08668d2cf9c221478cb7be75b2a0fcb49136969a555"
+    },
+    {
+      "source": "models/marts/fct_subscriptions.sql",
+      "mirror": "dbt/models/marts/fct_subscriptions.sql",
+      "sha256": "e0db3f3a8b1432ad6ae38f14e8048ed0011c54d06d58a8db2bb17118b729c6cb"
     },
     {
       "source": "models/staging/_sources.yml",
       "mirror": "dbt/models/staging/_sources.yml",
-      "sha256": "5fa7a4980d56700752fd1ff1c5643d2b6b6c42b7eb3c326455075463a86b777b"
+      "sha256": "223f4894ff7fb168485f267029f92ccd6d8e1f2a78dc1caea8013869b86aa333"
     },
     {
       "source": "models/staging/_staging.yml",
       "mirror": "dbt/models/staging/_staging.yml",
-      "sha256": "a92c6cabfe34a9a086649046922e8a473e50f860c27f52a778ffbfd14b5ec8e8"
+      "sha256": "8728bcab51455236afe1c0437b595bd007abc55ca741b597dec78964082d386b"
+    },
+    {
+      "source": "models/staging/stg_ad_spend.sql",
+      "mirror": "dbt/models/staging/stg_ad_spend.sql",
+      "sha256": "9bec64d73ea2fc7953d971c9284150149b9bb0c2760dc6cc68b67fd6bf938f2a"
     },
     {
       "source": "models/staging/stg_app_customers.sql",
       "mirror": "dbt/models/staging/stg_app_customers.sql",
-      "sha256": "3655e9f04b40a0c57614046b2182ab81870f3dd00618362029924b5ed7984a00"
+      "sha256": "0fc93f561e907e7a28e6e3606b387f42f19ae9a036f24ab48bc3995530ab0e9f"
     },
     {
       "source": "models/staging/stg_customer_id_crosswalk.sql",
@@ -73,9 +113,34 @@
       "sha256": "6157a7695514c1e0dde20090ab866d41fa746f931cb59a891ffdcac5547ac863"
     },
     {
+      "source": "models/staging/stg_order_lines.sql",
+      "mirror": "dbt/models/staging/stg_order_lines.sql",
+      "sha256": "3216d103f605c92f746c1861dd0253c391e273d1841eb3d88e11fe1f87948d3e"
+    },
+    {
       "source": "models/staging/stg_orders.sql",
       "mirror": "dbt/models/staging/stg_orders.sql",
-      "sha256": "4a7d1ad3f1c06edf3932d2cbd28d737381b9fb84fea33663798772884ed90829"
+      "sha256": "32d44fad05dd3f9ca2f63926f1c7340f360f2d926148295e631835189a6662d0"
+    },
+    {
+      "source": "models/staging/stg_plan_prices.sql",
+      "mirror": "dbt/models/staging/stg_plan_prices.sql",
+      "sha256": "39a46b6a6a2debbb95b0595c7f6d361ff08a3263278a8dcf7928951d13d9f02d"
+    },
+    {
+      "source": "models/staging/stg_plans.sql",
+      "mirror": "dbt/models/staging/stg_plans.sql",
+      "sha256": "7151493d2410e459b0ade6af58fc614a80a64fecd18654b86890010ee4347fc8"
+    },
+    {
+      "source": "models/staging/stg_products.sql",
+      "mirror": "dbt/models/staging/stg_products.sql",
+      "sha256": "8a4a694930821059c4b84670f220e696334bcfabbc77339c21f09cf67f538df7"
+    },
+    {
+      "source": "models/staging/stg_promotions.sql",
+      "mirror": "dbt/models/staging/stg_promotions.sql",
+      "sha256": "7851cb7e4444b18b318a8b7511d773a42f8b15aba2d4ad9e110cfd3c4e85f17f"
     },
     {
       "source": "models/staging/stg_refunds.sql",
@@ -103,6 +168,36 @@
       "sha256": "a34b44367978f116955db7d672f38e0d352b6474eb142dd7b493a18e7df0e59d"
     },
     {
+      "source": "models/staging/stg_subscriptions.sql",
+      "mirror": "dbt/models/staging/stg_subscriptions.sql",
+      "sha256": "6b41f6a1076e2fe28fb316c953d75493ffdec92168ae71d50d93e1d1ac9bb2d2"
+    },
+    {
+      "source": "models/staging/stg_supplier_shipments.sql",
+      "mirror": "dbt/models/staging/stg_supplier_shipments.sql",
+      "sha256": "b71d4876c155e9d5f52ce5fa49a83de6b41c9068749e8760062ed2f8bd05b97d"
+    },
+    {
+      "source": "models/staging/stg_suppliers.sql",
+      "mirror": "dbt/models/staging/stg_suppliers.sql",
+      "sha256": "39c181fb513399d19e24a086b1a085cf96a77a46b79dffc26bbd2f6cb5ccb20e"
+    },
+    {
+      "source": "models/staging/stg_tickets.sql",
+      "mirror": "dbt/models/staging/stg_tickets.sql",
+      "sha256": "06e3e122c2e1a689a770e72c2bd166f0e49739249e47d345bca9ee7670cc6834"
+    },
+    {
+      "source": "seeds/_seeds.yml",
+      "mirror": "dbt/seeds/_seeds.yml",
+      "sha256": "60e2037a7f5c6bd212dff8faee720706f6f35ccb4cd20c78f7531803aa1a97ab"
+    },
+    {
+      "source": "seeds/dim_date_seed.csv",
+      "mirror": "dbt/seeds/dim_date_seed.csv",
+      "sha256": "dc07c23bcbc954307a5b67e808ebd301f539329a0e12cd1f3e7d5d7ad03b9633"
+    },
+    {
       "source": "tests/customer_id_crosswalk_integrity.sql",
       "mirror": "dbt/tests/customer_id_crosswalk_integrity.sql",
       "sha256": "6bb99078d80ef60033dfab56d71e814f1411bc0affb72bbe7b26ee947cbdfcbf"
@@ -126,6 +221,16 @@
       "source": "tests/fct_identity_resolution_quality_reconciliation.sql",
       "mirror": "dbt/tests/fct_identity_resolution_quality_reconciliation.sql",
       "sha256": "793655629ba1ec7f4c66db24b2064b715e13734cbca32b7b05900bdb55a91941"
+    },
+    {
+      "source": "tests/fct_orders_no_legacy_channel.sql",
+      "mirror": "dbt/tests/fct_orders_no_legacy_channel.sql",
+      "sha256": "a07c61b8ab3e551fe8341ee5bfe4f47181e701310a2613e1e91938735c3c5d3c"
+    },
+    {
+      "source": "tests/fct_revenue_excludes_non_customer_accounts.sql",
+      "mirror": "dbt/tests/fct_revenue_excludes_non_customer_accounts.sql",
+      "sha256": "d6c59977faad536278be87d2ec0109c068a913756ee9ef901e4014b52ba13b21"
     },
     {
       "source": "tests/int_customer_identity_qualified_key_unique.sql",

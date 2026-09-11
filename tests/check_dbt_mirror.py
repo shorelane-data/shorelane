@@ -2,6 +2,9 @@
 """Verify the reviewed shorelane-dbt artifact mirror.
 
     python tests/check_dbt_mirror.py [--canonical-root ../shorelane-dbt]
+    python tests/check_dbt_mirror.py --update --canonical-root ../shorelane-dbt
+        # copy the canonical files into dbt/ and re-pin mirror_manifest.json to
+        # the canonical checkout's HEAD (then update CANONICAL_COMMIT below)
 """
 from __future__ import annotations
 
@@ -17,7 +20,7 @@ REPO_ROOT = pathlib.Path(__file__).resolve().parents[1]
 MIRROR_ROOT = REPO_ROOT / "dbt"
 MANIFEST_PATH = MIRROR_ROOT / "mirror_manifest.json"
 CANONICAL_URL = "https://github.com/shorelane-data/shorelane-dbt.git"
-CANONICAL_COMMIT = "c8a0a3f69fa10e21ca106bc278f583ab1fb3d771"
+CANONICAL_COMMIT = "7f6388172abad8a236bdf30c9aae682b9ae2a896"
 
 EXPECTED_SOURCE_PATHS = (
     "dbt_project.yml",
@@ -27,24 +30,45 @@ EXPECTED_SOURCE_PATHS = (
     "models/marts/_exposures.yml",
     "models/marts/_marts.yml",
     "models/marts/dim_customers.sql",
+    "models/marts/dim_date.sql",
+    "models/marts/dim_plans.sql",
+    "models/marts/dim_products.sql",
     "models/marts/fct_identity_resolution_quality.sql",
+    "models/marts/fct_marketing_spend.sql",
+    "models/marts/fct_order_lines.sql",
+    "models/marts/fct_orders.sql",
     "models/marts/fct_revenue.sql",
+    "models/marts/fct_subscriptions.sql",
     "models/staging/_sources.yml",
     "models/staging/_staging.yml",
+    "models/staging/stg_ad_spend.sql",
     "models/staging/stg_app_customers.sql",
     "models/staging/stg_customer_id_crosswalk.sql",
     "models/staging/stg_invoices.sql",
+    "models/staging/stg_order_lines.sql",
     "models/staging/stg_orders.sql",
+    "models/staging/stg_plan_prices.sql",
+    "models/staging/stg_plans.sql",
+    "models/staging/stg_products.sql",
+    "models/staging/stg_promotions.sql",
     "models/staging/stg_refunds.sql",
     "models/staging/stg_revenue_recognition.sql",
     "models/staging/stg_salesforce_customers.sql",
     "models/staging/stg_shopify_customers.sql",
     "models/staging/stg_stripe_customers.sql",
+    "models/staging/stg_subscriptions.sql",
+    "models/staging/stg_supplier_shipments.sql",
+    "models/staging/stg_suppliers.sql",
+    "models/staging/stg_tickets.sql",
+    "seeds/_seeds.yml",
+    "seeds/dim_date_seed.csv",
     "tests/customer_id_crosswalk_integrity.sql",
     "tests/customer_id_crosswalk_no_duplicate_mappings.sql",
     "tests/dim_customers_resolved_system_range.sql",
     "tests/fct_identity_resolution_quality_rate.sql",
     "tests/fct_identity_resolution_quality_reconciliation.sql",
+    "tests/fct_orders_no_legacy_channel.sql",
+    "tests/fct_revenue_excludes_non_customer_accounts.sql",
     "tests/int_customer_identity_qualified_key_unique.sql",
     "tests/int_customer_identity_status_consistency.sql",
     "tests/orders_dim_customers_preserves_metrics.sql",
@@ -113,7 +137,7 @@ def _mirrored_file_set_errors() -> list[str]:
     actual = set()
     if (MIRROR_ROOT / "dbt_project.yml").is_file():
         actual.add("dbt_project.yml")
-    for directory in ("models", "macros"):
+    for directory in ("models", "macros", "seeds"):
         root = MIRROR_ROOT / directory
         if root.exists():
             actual.update(
@@ -201,7 +225,7 @@ def check(canonical_root: pathlib.Path | None, allow_dirty_canonical: bool) -> l
         project = canonical_root / "dbt_project.yml"
         if project.is_file():
             discovered.add("dbt_project.yml")
-        for directory in ("models", "macros"):
+        for directory in ("models", "macros", "seeds"):
             root = canonical_root / directory
             if root.exists():
                 discovered.update(
@@ -226,8 +250,33 @@ def check(canonical_root: pathlib.Path | None, allow_dirty_canonical: bool) -> l
     return errors
 
 
+def update(canonical_root: pathlib.Path) -> int:
+    """Copy the pinned file set from the canonical checkout and rewrite the manifest."""
+    canonical_root = canonical_root.resolve()
+    head = _canonical_head(canonical_root)
+    files = []
+    for source, mirror in EXPECTED_MAPPINGS:
+        src = canonical_root / source
+        if not src.is_file():
+            print(f"canonical source is missing: {source}")
+            return 1
+        dst = REPO_ROOT / mirror
+        dst.parent.mkdir(parents=True, exist_ok=True)
+        dst.write_bytes(src.read_bytes())
+        files.append({"source": source, "mirror": mirror, "sha256": sha256(dst)})
+    MANIFEST_PATH.write_text(json.dumps(
+        {"canonical_repo_url": CANONICAL_URL, "canonical_commit": head, "files": files},
+        indent=2) + "\n", encoding="utf-8")
+    print(f"mirrored {len(files)} files from {canonical_root} @ {head}")
+    if head != CANONICAL_COMMIT:
+        print(f"NOTE: set CANONICAL_COMMIT = {head!r} in {pathlib.Path(__file__).name}")
+    return 0
+
+
 def main() -> int:
     parser = argparse.ArgumentParser(description=__doc__)
+    parser.add_argument("--update", action="store_true",
+                        help="copy files from --canonical-root and rewrite the manifest")
     parser.add_argument(
         "--canonical-root",
         type=pathlib.Path,
@@ -241,6 +290,10 @@ def main() -> int:
     args = parser.parse_args()
     if args.allow_dirty_canonical and args.canonical_root is None:
         parser.error("--allow-dirty-canonical requires --canonical-root")
+    if args.update:
+        if args.canonical_root is None:
+            parser.error("--update requires --canonical-root")
+        return update(args.canonical_root)
 
     failures = check(args.canonical_root, args.allow_dirty_canonical)
     if failures:

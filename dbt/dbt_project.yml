@@ -1,10 +1,11 @@
 name: "shorelane"
-version: "2.0.0"
+version: "4.0.0"
 config-version: 2
 
 profile: "shorelane"
 
 model-paths: ["models"]
+seed-paths: ["seeds"]
 target-path: "target"
 clean-targets: ["target", "dbt_packages"]
 
@@ -24,5 +25,5 @@ models:
       +materialized: table
 
 vars:
-  dataset_version: "shorelane-v3"
+  dataset_version: "shorelane-v4"
   identity_migration_date: "2021-07-01"

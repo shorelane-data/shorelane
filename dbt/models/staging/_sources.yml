@@ -2,19 +2,31 @@ version: 2
 
 sources:
   - name: app_db
-    description: "Shorelane's application database: canonical customers, orders, billing, rev-rec, and the identity crosswalk."
+    description: "Shorelane's application database: customers, catalog, orders and lines, subscriptions and plans, billing, rev-rec, promotions, and the identity crosswalk."
     schema: shorelane_raw
     tables:
       - name: app_db__customers
         identifier: app_db__customers
       - name: app_db__customer_id_crosswalk
         identifier: app_db__customer_id_crosswalk
+      - name: app_db__products
+        identifier: app_db__products
       - name: app_db__orders
         identifier: app_db__orders
+      - name: app_db__order_lines
+        identifier: app_db__order_lines
+      - name: app_db__plans
+        identifier: app_db__plans
+      - name: app_db__plan_prices
+        identifier: app_db__plan_prices
+      - name: app_db__subscriptions
+        identifier: app_db__subscriptions
       - name: app_db__invoices
         identifier: app_db__invoices
       - name: app_db__revenue_recognition
         identifier: app_db__revenue_recognition
+      - name: app_db__promotions
+        identifier: app_db__promotions
 
   - name: stripe
     description: "Payment processor customer identities and refunds."
@@ -38,3 +50,26 @@ sources:
     tables:
       - name: salesforce__customers
         identifier: salesforce__customers
+
+  - name: erp
+    description: "Supply-side ERP: suppliers and weekly inbound shipments."
+    schema: shorelane_raw
+    tables:
+      - name: erp__suppliers
+        identifier: erp__suppliers
+      - name: erp__supplier_shipments
+        identifier: erp__supplier_shipments
+
+  - name: ads
+    description: "Paid-media platform exports (Google, Meta, TikTok). Conversions are platform self-reported."
+    schema: shorelane_raw
+    tables:
+      - name: ads__daily_spend
+        identifier: ads__daily_spend
+
+  - name: zendesk
+    description: "Support tickets keyed by source-native requester identities."
+    schema: shorelane_raw
+    tables:
+      - name: zendesk__tickets
+        identifier: zendesk__tickets

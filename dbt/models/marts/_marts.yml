@@ -6,6 +6,8 @@ models:
       Tidy long fact: one row per (activity_date, measure_name, amount) for the
       five revenue measures. Period revenue = filter measure_name + sum amount.
       MUST agree with generators/measures.py (the reference implementation).
+      Excludes orders from test and internal accounts (account_type != 'customer');
+      staging does not, so a sum over stg_orders is the silent-SQL number.
     columns:
       - name: activity_date
         description: "Date the dollar is attributed to (varies by measure)."
@@ -33,6 +35,17 @@ models:
       - name: first_seen_date
         description: "Earliest creation date among resolved aliases, falling back to app creation."
         tests: [not_null]
+      - name: segment
+        description: "consumer, smb, or enterprise (from the app profile)."
+        tests: [not_null]
+      - name: account_type
+        description: "customer, test, or internal. The documented exclusion predicate: only 'customer' counts."
+        tests: [not_null]
+      - name: acquisition_channel
+        description: "Canonical channel of the first order, or 'signup'."
+        tests: [not_null]
+      - name: first_order_date
+        description: "Date of the first order; null for never-ordered accounts."
       - name: has_order
         description: "True when the canonical customer has at least one order."
         tests: [not_null]
@@ -79,4 +92,133 @@ models:
         tests: [not_null]
       - name: resolution_null_rate
         description: "Unresolved aliases divided by observed aliases, guarded for zero observations."
+        tests: [not_null]
+
+  - name: dim_products
+    description: "One row per SKU with supplier and unit cost (margin substrate)."
+    columns:
+      - name: sku
+        description: "Natural key."
+        tests: [unique, not_null]
+      - name: category
+        description: "Merchandise category."
+        tests: [not_null]
+      - name: unit_cost
+        description: "Landed cost per unit."
+        tests: [not_null]
+
+  - name: dim_plans
+    description: >
+      One row per plan across all three generations with its current price.
+      is_current marks the generation still sold — every generation is a live
+      subscription base, so never filter active subscribers on it.
+    columns:
+      - name: plan_id
+        description: "Natural key."
+        tests: [unique, not_null]
+      - name: plan_generation
+        description: "1, 2, or 3."
+        tests: [not_null]
+      - name: current_annual_price_per_seat
+        description: "Latest price in plan price history."
+        tests: [not_null]
+
+  - name: dim_date
+    description: "Calendar dimension, one row per day over the fixture timeline (from the portable seed)."
+    columns:
+      - name: date_day
+        description: "Natural key."
+        tests: [unique, not_null]
+      - name: year_month
+        description: "YYYY-MM label."
+        tests: [not_null]
+
+  - name: fct_orders
+    description: >
+      One row per order from a real customer at canonical channel grain: the
+      pre-2022 'direct' label is coalesced to 'd2c' (channel_raw keeps it) and
+      test / internal accounts are excluded. The documented order fact.
+    columns:
+      - name: order_id
+        description: "Natural key."
+        tests: [unique, not_null]
+      - name: customer_id
+        description: "Canonical app customer."
+        tests:
+          - not_null
+          - relationships:
+              to: ref('dim_customers')
+              field: app_db_customer_id
+      - name: channel
+        description: "Canonical channel."
+        tests:
+          - not_null
+          - accepted_values:
+              values: [d2c, business_subscription, marketplace]
+      - name: channel_raw
+        description: "Channel as landed (includes 'direct' before the rename)."
+        tests: [not_null]
+      - name: is_first_order
+        description: "True on the customer's first-ever order (new-customer attribution)."
+        tests: [not_null]
+
+  - name: fct_order_lines
+    description: >
+      One row per consumer order line from a real customer, with category, unit
+      cost, line cost, and gross margin. Subscription orders have no lines.
+    columns:
+      - name: order_line_id
+        description: "Natural key."
+        tests: [unique, not_null]
+      - name: order_id
+        description: "Parent order in fct_orders."
+        tests:
+          - not_null
+          - relationships:
+              to: ref('fct_orders')
+              field: order_id
+      - name: gross_margin
+        description: "line_amount - quantity * unit_cost."
+        tests: [not_null]
+
+  - name: fct_subscriptions
+    description: >
+      One row per subscription term from a real customer with plan generation
+      and renewal outcome. Active subscribers at D = terms containing D, at
+      customer grain.
+    columns:
+      - name: subscription_id
+        description: "Term natural key."
+        tests: [unique, not_null]
+      - name: customer_id
+        description: "Canonical app customer."
+        tests:
+          - not_null
+          - relationships:
+              to: ref('dim_customers')
+              field: app_db_customer_id
+      - name: plan_generation
+        description: "Generation of the term's plan."
+        tests: [not_null]
+      - name: status
+        description: "renewed, active, or churned."
+        tests:
+          - not_null
+          - accepted_values:
+              values: [renewed, active, churned]
+
+  - name: fct_marketing_spend
+    description: >
+      One row per platform-day of paid media with the platform's self-reported
+      conversions AND the warehouse-attributed new d2c customers for that day
+      (the day total, repeated on every platform row — do not sum it across platforms).
+    columns:
+      - name: spend_date
+        description: "Grain with platform."
+        tests: [not_null]
+      - name: platform
+        description: "google, meta, or tiktok."
+        tests: [not_null]
+      - name: attributed_new_d2c_customers_day_total
+        description: "First-ever d2c orders from real customers on spend_date (day total)."
         tests: [not_null]
