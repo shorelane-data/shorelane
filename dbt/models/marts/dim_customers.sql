@@ -1,5 +1,7 @@
 -- Safe one-row-per-canonical-customer dimension. Unresolved aliases are excluded
 -- from attribution because they do not carry an app_db_customer_id.
+-- v4 adds segment / account_type / acquisition_channel from the app profile;
+-- account_type is the documented exclusion predicate (only 'customer' counts).
 with app_customers as (
     select * from {{ ref('stg_app_customers') }}
 ),
@@ -20,7 +22,8 @@ identity_rollup as (
 order_rollup as (
     select
         customer_id as app_db_customer_id,
-        count(*) as order_count
+        count(*) as order_count,
+        min(order_date) as first_order_date
     from {{ ref('stg_orders') }}
     group by customer_id
 )
@@ -28,6 +31,10 @@ order_rollup as (
 select
     app_customers.app_db_customer_id,
     coalesce(identity_rollup.first_seen_date, app_customers.created_date) as first_seen_date,
+    app_customers.segment,
+    app_customers.account_type,
+    app_customers.acquisition_channel,
+    order_rollup.first_order_date,
     case when coalesce(order_rollup.order_count, 0) > 0 then true else false end as has_order,
     coalesce(identity_rollup.resolved_source_id_count, 0) as resolved_source_id_count,
     coalesce(identity_rollup.resolved_source_system_count, 0) as resolved_source_system_count,

@@ -29,6 +29,7 @@ import pandas as pd
 import config
 from generators import dataset
 from generators.dataset import RAW_TABLES
+from generators.common import canonical_channel
 from generators.measures import five_revenues
 
 # Period filter options, keyed to a trailing window length in months (None = all).
@@ -59,6 +60,9 @@ def load_tables() -> dict[str, pd.DataFrame]:
         tables["app_db__revenue_recognition"]["recognition_date"]
     )
     tables["stripe__refunds"]["refund_date"] = pd.to_datetime(tables["stripe__refunds"]["refund_date"])
+    # Apply the documented coalescing rule for the 2022 channel rename (debt #3)
+    # so every dashboard series is at canonical channel grain.
+    tables["app_db__orders"]["channel"] = canonical_channel(tables["app_db__orders"]["channel"])
     return tables
 
 
@@ -173,15 +177,98 @@ def kpis(tables: dict[str, pd.DataFrame], start: pd.Timestamp, end: pd.Timestamp
     }
 
 
+def render_markdown(tables: dict[str, pd.DataFrame], anchor_month: pd.Timestamp) -> str:
+    """Derived ground truth for the executive dashboard, pinned to fully-elapsed
+    months ending at anchor_month. Never hand-edit the output."""
+
+    def kpi_table(period: str, heading: str | None = None) -> str:
+        start, end, _ = period_bounds(period, anchor_month)
+        k = kpis(tables, start, end)
+        cust_label = "Total customers" if period == "All Time" else "Active customers"
+        rows = [
+            ("**Revenue (recognized)**", f"**${k['recognized_revenue']:,.2f}**"),
+            ("GMV", f"${k['gmv']:,.2f}"),
+            ("Net revenue", f"${k['net_revenue']:,.2f}"),
+            ("Collected cash", f"${k['collected_cash']:,.2f}"),
+            (cust_label, f"{k['active_customers']:,}"),
+        ]
+        if period != "All Time":
+            rows.append(("New customers", f"{k['new_customers']:,}"))
+        rows += [
+            ("Orders", f"{k['orders']:,}"),
+            ("Avg order value", f"${k['aov']:,.2f}"),
+            ("Refund rate (of GMV)", f"{k['refund_rate'] * 100:.2f}%"),
+        ]
+        body = "\n".join(f"| {label} | {value} |" for label, value in rows)
+        title = heading or period
+        return f"## {title} ({start.date()} .. {end.date()})\n\n| KPI | Value |\n|---|---:|\n{body}\n"
+
+    start12, end12, _ = period_bounds("Last 12 Months", anchor_month)
+    by_channel = " · ".join(
+        f"{row['channel_label']} ${row['amount']:,.2f}"
+        for _, row in revenue_by_channel(tables, start12, end12).iterrows()
+    )
+    k12 = kpis(tables, start12, end12)
+    return f"""# Ground truth — Executive Dashboard KPIs
+
+Dataset: **{config.DATASET_VERSION}** (SEED={config.SEED}). These figures are **derived from the
+generated data** by `bi/dashboard_data.py`, not hand-authored. They are the
+source-of-truth numbers the interactive exec dashboard
+(`bi/plotly/business_dashboard.py`) renders, and what an agent's answer should be
+validated against. Reproduce exactly with:
+
+```
+python -m bi.dashboard_data --anchor {anchor_month.strftime('%Y-%m')} --output context/ground_truth/business_dashboard.md
+```
+
+Headline **Revenue = recognized_revenue (GAAP)** — the canonical default from
+`context/metrics/revenue.yml`. The timeline extends to {config.END_DATE[:7]} so the live
+pipeline can drip-feed data daily; every window below is therefore **pinned with
+`--anchor {anchor_month.strftime('%Y-%m')}` to fully-elapsed calendar months**, making the figures valid
+against both the full fixture and the live drip-fed warehouse (query with the
+explicit date bounds shown). Orders from non-`customer` accounts
+(`app_db__customers.account_type` in `test`, `internal`) are excluded from every
+revenue figure, matching `fct_revenue`; channels are at canonical grain
+(`direct` coalesced to `d2c`).
+
+{kpi_table('Last 12 Months')}
+Revenue by channel: {by_channel}.
+
+{kpi_table('Last 24 Months')}
+{kpi_table('All Time', f'Through {anchor_month.year}')}
+## Notes for the demo
+
+- The dashboard deliberately commits to ONE revenue (recognized/GAAP) and labels
+  it. That is the "human-confirmed source of truth": an agent that answers a
+  {anchor_month.year} "what's our revenue" with **${k12['recognized_revenue'] / 1e6:,.2f}M** matches; one that returns
+  GMV (${k12['gmv'] / 1e6:,.2f}M) or collected cash (${k12['collected_cash'] / 1e6:,.2f}M) is the silent-SQL failure.
+- On the **live warehouse**, an unanchored "last 12 months" resolves relative to
+  today and will not match these tables — that is expected. Validation queries
+  must use the explicit date bounds above.
+- Re-derive after any change to `config.py` or the generators (it's a breaking
+  change — bump `DATASET_VERSION` and regenerate this file in the same commit).
+"""
+
+
 def _main() -> None:
     ap = argparse.ArgumentParser()
     ap.add_argument("--period", default=DEFAULT_PERIOD, choices=list(PERIODS))
     ap.add_argument("--anchor", default=None, metavar="YYYY-MM",
                     help="pin the window end to this month instead of the data's last order month")
+    ap.add_argument("--output", default=None,
+                    help="write the derived ground-truth markdown here (requires --anchor)")
     args = ap.parse_args()
 
     tables = load_tables()
     end_month = pd.Timestamp(args.anchor + "-01") if args.anchor else data_end_month(tables)
+    if args.output is not None:
+        if args.anchor is None:
+            ap.error("--output requires --anchor (ground truth must be pinned)")
+        os.makedirs(os.path.dirname(args.output) or ".", exist_ok=True)
+        with open(args.output, "w") as fh:
+            fh.write(render_markdown(tables, end_month))
+        print(f"wrote {args.output}")
+        return
     start, end, months = period_bounds(args.period, end_month)
     k = kpis(tables, start, end)
 

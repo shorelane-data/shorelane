@@ -1,1 +1,271 @@
-{"q1_2024_five_revenues":{"billed_revenue":1334267.84,"collected_cash":1164885.32,"gmv":1359503.83,"net_revenue":1330251.05,"recognized_revenue":1428393.18},"tables":{"app_db__invoices":{"columns":["invoice_id","order_id","billed_date","due_date","collected_date","amount","is_bad_debt"],"content_hash":"988188c819c46b295ef978b883aad627dcc82b43ffb4d91b55ea6d73b3362b14","date_hash":"fbe28075974a34cfa7af07449e69e112ef6ed0d5ece6931d5fdc8b16c52e66a1","money_hash":"09a0a90d9db693a3d831adbc845f41c9fd2baa306f3d2b1c8a66bb26a4833627","primary_key":["invoice_id"],"primary_key_hash":"1afd38b9cf07cc713f25788e0accc6f035e8853deb786b2d3d5758fd035c67fa","row_count":3738},"app_db__orders":{"columns":["order_id","customer_id","channel","order_date","gross_amount","take_rate","net_amount"],"content_hash":"5c0a6ea98d49908286501657362d043bbe802ed79522284717c1b29603c7298e","date_hash":"9a4e095ccd7308f2b22673437a598b163e9e254fe1901ebbfc56ef05bb65ac5d","money_hash":"170af840eec4fbfa7e0752cb8132e48a8a6074c799896356d001908029abf570","primary_key":["order_id"],"primary_key_hash":"121410a2231098cbd7d26536581e1899d0c29f3167eb056709727f6a09fc0fff","row_count":15000},"app_db__revenue_recognition":{"columns":["order_id","recognition_date","amount"],"content_hash":"903d9c95e5a1c3691bf0314e6bc8b335ffb1fa44909c6b3c2f8aa32c12ce986f","date_hash":"83196c33ef390f42278aa7240bbdbf84e05fc2d5f3b2aab72882e5d43d35e605","money_hash":"4b0543be1c3d3f829b07e0b0ed14d95b31c53a594c45c7d3e74646a6bc6d6bf2","primary_key":["order_id","recognition_date"],"primary_key_hash":"3b04dcf3466b483ab48983c9509c28bf6490a4ee6af5938a36b91e3e30d68340","row_count":56118},"stripe__refunds":{"columns":["refund_id","order_id","refund_date","refund_amount"],"content_hash":"6b6630cb3e94b21a3e0dbdb988d4e2ca9bb71386c0be5523ae10c0fc8ac7db36","date_hash":"6dde619eef63de1800c63899d0582dd2c2ef3cc36aef4fc9898dff646cfc9f56","money_hash":"cd3aa4cf6e7943795e7aaa434507685dbef961cf67da72493f471ff8cd112755","primary_key":["refund_id"],"primary_key_hash":"1e62ad546c2909c35c7e866ac0b8a258876e5fb8a33ca220cca1bee76111ea60","row_count":729}}}
+{
+  "q1_2024_five_revenues": {
+    "billed_revenue": 4630254.31,
+    "collected_cash": 4942255.88,
+    "gmv": 4757319.7,
+    "net_revenue": 4598755.88,
+    "recognized_revenue": 4932192.31
+  },
+  "tables": {
+    "ads__daily_spend": {
+      "columns": [
+        "spend_date",
+        "platform",
+        "spend_usd",
+        "impressions",
+        "clicks",
+        "reported_conversions"
+      ],
+      "content_hash": "63a405bf65a7fb08883494e848df3a37b749eb67b814bcadf2bc5043c12cfa8b",
+      "date_hash": "3c6b970fbe23f30448c1e28fdbb892a8a561cb6aa90152cb6f3928031deffbaa",
+      "money_hash": "2bc2e82fa17929f7ee11f1a45a06cb9322e9f8a71634bbd7fa1c516488eef5d3",
+      "primary_key": [
+        "spend_date",
+        "platform"
+      ],
+      "primary_key_hash": "bc149a29e69d561c229490475fd7356a71f03c4d49896a9893b5fa53cf78c9fe",
+      "row_count": 8828
+    },
+    "app_db__customers": {
+      "columns": [
+        "app_db_customer_id",
+        "created_at",
+        "segment",
+        "account_type",
+        "acquisition_channel"
+      ],
+      "content_hash": "d3a4ca07a56dbea87f5b8260711f9d6561866ba991e59cbf306d35be7306c49e",
+      "date_hash": "566c1e27758df3c60400baf2e16bebc1a3bae7309e14f44208fb8b6b1df44f64",
+      "money_hash": "5021a18642f0f17c1bfce9b758550e34b4cc89b286b179e6dd71a5a4d6194c95",
+      "primary_key": [
+        "app_db_customer_id"
+      ],
+      "primary_key_hash": "958d51a51cea00a3f2e7736f9107511589ac5367956eb24d1bd394bd5f2beb07",
+      "row_count": 37781
+    },
+    "app_db__invoices": {
+      "columns": [
+        "invoice_id",
+        "order_id",
+        "billed_date",
+        "due_date",
+        "collected_date",
+        "amount",
+        "is_bad_debt"
+      ],
+      "content_hash": "5ef4178c357ef94034aec1bbaf4c213b82ee14a4755a1a32ebf2cf9dff6d1a33",
+      "date_hash": "347461f935097eda28d5202bb33cb8abf35541d976a5f35e8d76e331adc50c2a",
+      "money_hash": "c86eae0cb4a59e0b960125c2f7486855d212c2924369d1fb3691ba551781f19f",
+      "primary_key": [
+        "invoice_id"
+      ],
+      "primary_key_hash": "a6bd1e359fc4f3cf41f319c28be19a870bfe62b22ac229124f82d1369fae40e4",
+      "row_count": 21121
+    },
+    "app_db__order_lines": {
+      "columns": [
+        "order_line_id",
+        "order_id",
+        "sku",
+        "quantity",
+        "unit_price",
+        "discount_pct",
+        "line_amount",
+        "created_at"
+      ],
+      "content_hash": "37b8df2c0341af2462e3262fbe9887cb3f0d5812872db6b5cc782f6c540eba47",
+      "date_hash": "e9a6dc699de15faf7efe69ef6a8a1d9b10e0b086a867da21a3ae8b399eccd1f1",
+      "money_hash": "cbfbc4d1532ed4b3e4aadea023074fce63df5f532752080f89d32d94447d6634",
+      "primary_key": [
+        "order_line_id"
+      ],
+      "primary_key_hash": "6217de795a8f7e16c22fcd90b188063eecbd73b85d9c3ee7a124d9971c0372b8",
+      "row_count": 191052
+    },
+    "app_db__orders": {
+      "columns": [
+        "order_id",
+        "customer_id",
+        "channel",
+        "order_date",
+        "gross_amount",
+        "take_rate",
+        "net_amount",
+        "promo_code",
+        "subscription_id"
+      ],
+      "content_hash": "59321ea2d1b5c48bbd8adee6b3197caa58b31a520ad60551b68b6f13fba9e4d8",
+      "date_hash": "067073cb1a0a8f63024ac3fd3b842981ae487732bfbfeb9259a1f716d004127d",
+      "money_hash": "eaff9fabce800a03f584599f823b86c3f6fb885c78b04ee6f07672a7fc3ca032",
+      "primary_key": [
+        "order_id"
+      ],
+      "primary_key_hash": "f9f2e7c060748d38058e830f25b7fedd24cef14ef96eb57abc29d117aed743de",
+      "row_count": 105121
+    },
+    "app_db__plan_prices": {
+      "columns": [
+        "plan_id",
+        "effective_from",
+        "annual_price_per_seat"
+      ],
+      "content_hash": "4b3627d5def38dd5bb50e996565e42462ef98adb3ab086d5487983b531718ac9",
+      "date_hash": "d6e516051538a2d03db3feea23a6b489b1da713b386fec5bb7f9faf0d810d9ac",
+      "money_hash": "b39043d5758e982af354ef3206001de885b778d2e966878e9302b7dc451e4b51",
+      "primary_key": [
+        "plan_id",
+        "effective_from"
+      ],
+      "primary_key_hash": "e987e53986d1a8ce5badd420d1a99c39a2d0ce06342dccd83b65efd208fad881",
+      "row_count": 11
+    },
+    "app_db__plans": {
+      "columns": [
+        "plan_id",
+        "plan_name",
+        "plan_generation",
+        "tier",
+        "launched_at",
+        "retired_at",
+        "is_current"
+      ],
+      "content_hash": "e59acda7a7e190bbb73566c3a4506302c0b02d8b7ae8e8ca6c20a77d03a1d5c0",
+      "date_hash": "f16f312b49b7c8eacc39fc8b14c4514229fe16b4cfbeb6f43214c637b7e68da8",
+      "money_hash": "5021a18642f0f17c1bfce9b758550e34b4cc89b286b179e6dd71a5a4d6194c95",
+      "primary_key": [
+        "plan_id"
+      ],
+      "primary_key_hash": "d266e6b738509f8fc3e1956bbc9cf603a2817e408771851d582b342f74ef1765",
+      "row_count": 8
+    },
+    "app_db__products": {
+      "columns": [
+        "sku",
+        "product_name",
+        "category",
+        "supplier_id",
+        "unit_cost",
+        "list_price",
+        "introduced_at"
+      ],
+      "content_hash": "fa1538bd17400c776abde88f03a961063c3991561e12e60409687298e39311b8",
+      "date_hash": "652e0462f04db7d0423d8dbcadc558ae6394360b554f1e813bfb51e95de1441f",
+      "money_hash": "6965cc63527fb8cd20d75da98fbff13154e3c6774dcaf1ab151cda2f1bf015c2",
+      "primary_key": [
+        "sku"
+      ],
+      "primary_key_hash": "26a80a78cc43f989b6cffbd2b1da38b5ffc7b5c567de3838b3471d35ce45da57",
+      "row_count": 128
+    },
+    "app_db__promotions": {
+      "columns": [
+        "promo_code",
+        "promo_name",
+        "start_date",
+        "end_date",
+        "discount_pct",
+        "eligible_channels"
+      ],
+      "content_hash": "3e7d0be17c24f006f0c9b67ec6c344118bad7ffb78592667d927897535af6de6",
+      "date_hash": "aca56b9c29ccb669a8dd99120ee2d7311d1174090450386e0f9f9910a9440049",
+      "money_hash": "49b0a362ce382320171e95e381d5c655be2e62877fc23fc8f696a5de81784aa2",
+      "primary_key": [
+        "promo_code"
+      ],
+      "primary_key_hash": "76ada9744d85791a08dff072d60bdd322d48fbb47461844ed3dac695657978ed",
+      "row_count": 3
+    },
+    "app_db__revenue_recognition": {
+      "columns": [
+        "order_id",
+        "recognition_date",
+        "amount"
+      ],
+      "content_hash": "f9d6f855880bd1712ae530cfd65f9c2f621f08156f2b8b59c5b96797e9c11521",
+      "date_hash": "972bf86f6ab0a9369d6c0f82656187e0629d3c29d296af9d6c132cff13ac1f88",
+      "money_hash": "7e85cd043e5f529258b6d8fa6b5ea77508fd5ccb7611ee3bc13ced57d4d93b46",
+      "primary_key": [
+        "order_id",
+        "recognition_date"
+      ],
+      "primary_key_hash": "bf115377a1ee1db326cb873272b026810e04110f96464a5fa8e05218a2db0060",
+      "row_count": 337452
+    },
+    "app_db__subscriptions": {
+      "columns": [
+        "subscription_id",
+        "customer_id",
+        "plan_id",
+        "seats",
+        "term_start",
+        "term_end",
+        "price_per_seat",
+        "acv",
+        "order_id",
+        "renewed_from_subscription_id",
+        "status",
+        "cancelled_at"
+      ],
+      "content_hash": "506e92d7fc6f37379e3e1b3fc5ee63811666ebce93a57be3eb787e24bbb69024",
+      "date_hash": "fd77328a28accd75f09466a322c1e93170d77b2bdf918d807c16171b8bb93e1a",
+      "money_hash": "f0876d933e39a82627b342b8ad408d49d580fc003b1a602686e4dbab38cac8c2",
+      "primary_key": [
+        "subscription_id"
+      ],
+      "primary_key_hash": "e83c3919c396c169e90ce1d70d1d5f1188ff834dfaea29a7d7778d8db75d5cbb",
+      "row_count": 21121
+    },
+    "erp__supplier_shipments": {
+      "columns": [
+        "shipment_id",
+        "supplier_id",
+        "category",
+        "expected_date",
+        "received_date",
+        "units_expected",
+        "units_received",
+        "status"
+      ],
+      "content_hash": "12648f4488d6fd9ebb435c09089be60cd01deafece3046689bd3b55dfb76cb39",
+      "date_hash": "e60135ae799cb11409aba671e2487ffdd46adcb552e5bec1606cfede3fa25b52",
+      "money_hash": "5021a18642f0f17c1bfce9b758550e34b4cc89b286b179e6dd71a5a4d6194c95",
+      "primary_key": [
+        "shipment_id"
+      ],
+      "primary_key_hash": "b60132773a115ad9642acd3c6f1ee2276456149f53f88dd20c398e4e36771ac6",
+      "row_count": 2814
+    },
+    "erp__suppliers": {
+      "columns": [
+        "supplier_id",
+        "supplier_name",
+        "category",
+        "onboarded_at"
+      ],
+      "content_hash": "dce82dc9ed4ddf736f4e0ddedfee8afd032f59b42a66644a8f39796019eba685",
+      "date_hash": "e52c9c681ea029d59ce76ab416b218b661fa29b849cd805f44567a32a26d8295",
+      "money_hash": "5021a18642f0f17c1bfce9b758550e34b4cc89b286b179e6dd71a5a4d6194c95",
+      "primary_key": [
+        "supplier_id"
+      ],
+      "primary_key_hash": "d91e04ab7f1d887778229761e36e30bd222101b2a285262831a4daed72d71d2e",
+      "row_count": 6
+    },
+    "stripe__refunds": {
+      "columns": [
+        "refund_id",
+        "order_id",
+        "refund_date",
+        "refund_amount"
+      ],
+      "content_hash": "6007e7ca4b83e3876d0605d9d5ed7582c490bc5d02f57bc79cb5f81213ecb202",
+      "date_hash": "2152022716b6aecf67d8b52d2d2d4006bbda98a7c787513b290db81fc44e33cd",
+      "money_hash": "425063ad90c6e80bdaa90de2553df195dd8c6e0d77e2ce073c3d89ad2ab632e8",
+      "primary_key": [
+        "refund_id"
+      ],
+      "primary_key_hash": "ea628770009f7056419a526ec35cd7b408f25d1fd43b41aaaa057593a7f412eb",
+      "row_count": 5055
+    }
+  }
+}

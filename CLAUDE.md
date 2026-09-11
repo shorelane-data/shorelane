@@ -37,8 +37,8 @@ triple. Copy its shape when you add the next piece of debt.
 ## Non-negotiable invariants
 
 - **Determinism.** All randomness derives from `config.SEED` via
-  `generators/common.make_rng(stream=N)`. **Every new generator must use a NEW
-  `stream` int** so it cannot perturb existing output. If output for an existing
+  `generators/common.make_rng(stream=N)` (registry in that module's docstring).
+  **Every new generator must use a NEW `stream` int** so it cannot perturb existing output. If output for an existing
   table changes, you have silently invalidated ground truth.
 - **Ground truth is derived, not authored.** Numbers in `context/ground_truth/`
   come from running the generators + `generators/measures.py`. Never type a figure
@@ -118,47 +118,61 @@ silently goes wrong.
 
 ## Current state (built)
 
-The **five-revenues** vertical slice is complete and runnable:
-- generators for orders/invoices/recognition/refunds with the planted divergence
-- `generators/measures.py` reference implementation of all five measures
-- `fct_revenue` dbt mart (tidy long table) mirroring the reference
-- context: metric defs, personas, LookML, derived ground truth for Q1 2024
-- evals: three questions (unqualified, marketing-persona, cash) + rubric
-- loaders (BQ working, Snowflake stub), Plotly dashboard, Looker Studio guide
+**shorelane-v4** (2026-09) — the business-dynamics release. Nineteen raw tables,
+all seeded, all documented in `raw_schema/`:
 
-Verify it: `make verify` prints the five revenues for Q1 2024. They diverge, and
-notably `recognized_revenue` > `gmv` (ratable recognition from prior-period subs)
-— the signature trap.
+- **Five revenues** (the signature trap): orders/invoices/recognition/refunds
+  with the planted divergence; `generators/measures.py` is the reference,
+  `fct_revenue` the warehouse expression. `make verify` prints Q1 2024 and
+  `recognized_revenue > gmv` holds there because Q4 is the B2B booking season.
+- **Business dynamics** (`generators/timeline.py`): 14% compounding growth, monthly
+  seasonality per channel, and `config.EVENTS` — five seeded events, each with a
+  known cause in a named table, so diagnostic questions have derivable answers:
+  a paper-supplier outage (2023-03), a Back-to-Business promo (2024-09), a gen-3
+  price increase (2025-05), an enterprise churn wave after a billing incident
+  (2022-Q4), and a paid-media cut (2026-02). Ground truth:
+  `context/ground_truth/events.md` via `generators/event_measures.py`.
+- **Customer lifecycle** (`generators/customers.py`): order-first assignment with a
+  recency pool, so cohorts, retention, and new-vs-returning are real series.
+- **Product catalog + supply** (`generators/catalog.py`): 128 SKUs in six categories
+  with `unit_cost` (the margin substrate for prescriptive questions), one supplier
+  per category, weekly shipments.
+- **Subscriptions** (`generators/subscriptions.py`): per-term rows, renewals with a
+  churn hazard, three grandfathered plan generations with price history.
+- **Marketing** (`generators/marketing.py`): promotions and daily ad spend with
+  inflated self-reported conversions. **Support** (`generators/support.py`):
+  Zendesk tickets keyed by source-native ids.
+- **Identity fragmentation** (`generators/identity.py`): unchanged from v3 —
+  2–4 aliases per customer, the 2021 crosswalk gap, Stripe account recreation.
+- Debt items built as definitional traps: **channel rename** (`direct` before
+  2022-06-01), **test/internal accounts** (excluded by `fct_revenue` and
+  `measures.py`, unfiltered in raw/staging), **plan generations** (`is_current`
+  undercounts). Still unbuilt: OfficeMax acquisition, the three-ad-totals context.
+
+Every committed figure is derived: `make ground-truth` re-renders all of
+`context/ground_truth/`, `evals/questions.yaml`, `evals/demo/cases.yaml`, and the
+table-stability manifest; `make test` guards them. Breaking the data is a
+deliberate ritual: bump `DATASET_VERSION`, run `make ground-truth`, commit together.
 
 ## How to extend — the debt catalog roadmap
 
 Add these next, each as a full eval triple, smallest-blast-radius first. For each:
-generate the mess (new RNG stream) → document raw schema → build staging/mart →
-author the resolving context artifact → derive ground truth → write eval + rubric.
-Generator and raw-schema work alone is groundwork, not a completed vertical slice;
-do not mark a debt item built until its full eval triple and warehouse models exist.
+generate the mess (new RNG stream — see the registry in `generators/common.py`) →
+document raw schema → build staging/mart → author the resolving context artifact →
+derive ground truth → write eval + rubric.
 
-1. **Identity fragmentation** — 2–4 IDs per customer across stripe / salesforce /
-   shopify / app_db; a 2021 migration drops a fraction of the crosswalk. Trap:
-   joins silently drop or double-count. Context: identity-resolution model + null-rate.
-   **In progress:** v3 local generation, `raw_schema/` contracts, derived ground truth,
-   resolving guide/LookML, eval/rubric, and the checksum-guarded canonical dbt mirror
-   from reviewed `shorelane-dbt` PR #9 exist. The public BigQuery/private Redshift v3
-   migrations, builds, and cross-warehouse parity have not run, and package version
-   `3.0.0` has not been released, so this is not a completed vertical slice.
+1. **Identity fragmentation** — built (v3; warehouse leg landed with v4 on BigQuery).
 2. **OfficeMax acquisition** — an unmerged cohort with cents-vs-dollars and
-   different status enums. Trap: unit/enum mismatch in sums and filters.
-3. **Channel rename 2022** — "direct" → "d2c" without backfill. Trap: one channel
-   splits in two. Context: coalescing rule.
-4. **Subscription restructure 2023** — three plan generations grandfathered. Trap:
-   "active subscribers" miscounts. Context: plan-generation mapping.
-5. **Three ad conversion totals** — google/meta/tiktok self-reported vs warehouse-
-   attributed. Trap: CAC uses the wrong source. Context: source-of-truth guide.
-6. **Soft deletes / test accounts / internal orders** unfiltered everywhere. Trap:
-   inflated counts. Context: documented exclusion predicates.
-
-Also add the missing source systems as you go (Salesforce, Shopify-legacy red
-herring, ad platforms, Zendesk) so prompts can read like real Slack messages.
+   different status enums. Trap: unit/enum mismatch in sums and filters. **Unbuilt.**
+3. **Channel rename 2022** — built in v4 (`config.CHANNEL_RENAME_DATE`); context
+   artifact = the coalescing rule.
+4. **Subscription restructure** — built in v4 (`config.PLAN_GENERATIONS`); context
+   artifact = the plan-generation mapping and the "active subscriber" definition.
+5. **Three ad conversion totals** — the data is planted (`ads__daily_spend.
+   reported_conversions` is inflated per platform) but no context artifact or eval
+   exists yet. **Half-built.**
+6. **Soft deletes / test accounts / internal orders** — built in v4
+   (`app_db__customers.account_type`); context artifact = the exclusion predicate.
 
 ## Live infrastructure
 
@@ -271,13 +285,20 @@ python tests/check_ground_truth.py   # committed figures still derive from the g
 ```
 config.py                 seed, timeline, economics (the trap constants)
 generators/               seeded data generation
-  common.py               make_rng(stream) — the determinism boundary
-  orders.py               the five-revenues raw tables
+  common.py               make_rng(stream) — the determinism boundary + stream registry
+  timeline.py             growth × seasonality × EVENTS intensity curve (pure)
+  catalog.py              products, suppliers, shipments
+  subscriptions.py        plans, price history, per-term subscriptions
+  customers.py            order→customer assignment (recency pool), sign-ups, ids
+  marketing.py            promotions, daily ad spend
+  orders.py               the commerce orchestrator (14 tables)
   identity.py             source-native customer identities + incomplete crosswalk
-  dataset.py              canonical ordered nine-table generator registry
+  support.py              Zendesk tickets (after identity)
+  dataset.py              canonical ordered nineteen-table generator registry
   measures.py             reference impl of the five measures (CANONICAL)
-  emit.py                 → Parquet (+ optional GCS), optionally print period measures
-raw_schema/               exact generated landing schemas (revenue + customer identity)
+  event_measures.py       reference impl of the seeded-event figures (tier-2/3 gold)
+  emit.py                 → Parquet (+ optional GCS), period measures, revenue doc
+raw_schema/               exact generated landing schemas (revenue, identity, commerce)
 dbt/                      local mirror of shorelane-dbt (canonical copy lives there)
   macros/money.sql        the ONLY dialect difference between the warehouses
 context/                  THE NODAL LAYER

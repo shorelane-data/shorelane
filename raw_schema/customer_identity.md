@@ -1,9 +1,8 @@
 # Raw landing schema — customer identity
 
-This document describes the **local/generated shorelane-v3 release candidate** emitted by
-`generators.dataset.generate()`. It does not assert that the public BigQuery dataset or
-the private Redshift warehouse has been migrated to these tables. Live rollout is a
-separate, coordinated loader/dbt release.
+This document describes the **shorelane-v4** tables emitted by `generators.dataset.generate()`.
+The public BigQuery dataset is loaded from this release; the private Redshift warehouse is
+not (its migration is deferred).
 
 The fixture deliberately fragments one app customer across source-native identities.
 The raw Stripe, Shopify, and Salesforce customer tables intentionally do **not** expose
@@ -24,8 +23,11 @@ pool, including customers that never place an order.
 
 | column | generated type | nullable | meaning |
 |---|---|---:|---|
-| `app_db_customer_id` | string (`object`) | no | Canonical app customer ID. |
-| `created_at` | timestamp (`datetime64[s]`) | no | App customer creation time. For customers with orders, no later than their first order; unused customers receive a deterministic date in the fixture timeline. |
+| `app_db_customer_id` | string (`object`) | no | Canonical app customer ID, assigned chronologically by creation. |
+| `created_at` | timestamp | no | Sign-up date: the first order (or first subscription term) for ordering customers; a drawn date for sign-ups that never order. |
+| `segment` | string | no | `consumer`, `smb`, or `enterprise`. |
+| `account_type` | string | no | `customer`, `test` (QA accounts), or `internal` (Shorelane's own consumption). **Only `customer` rows count toward revenue** — the exclusion is applied in `fct_revenue`, not here. |
+| `acquisition_channel` | string | no | Canonical channel of the first order, or `signup` for never-ordered accounts. |
 
 `app_db__orders.customer_id` is a real FK to this table's
 `app_db_customer_id`; it is no longer an unresolved customer reference.

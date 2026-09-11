@@ -1,6 +1,6 @@
 # Ground truth — Customers Dashboard KPIs
 
-Dataset: **shorelane-v3** (SEED=20190401). These figures are
+Dataset: **shorelane-v4** (SEED=20190401). These figures are
 **derived from the generated data** by `bi/customers_data.py`, not hand-authored.
 They are the source-of-truth numbers the customers dashboard
 (`bi/plotly/customers_dashboard_static.py`) renders. Reproduce exactly with:
@@ -24,46 +24,46 @@ fixture and the live drip-fed warehouse.
 
 | KPI | Value |
 |---|---:|
-| Current customers (at window end) | 1,405 |
-| Current subscribers (at window end) | 409 |
-| Current d2c customers (at window end) | 812 |
-| Current marketplace customers (at window end) | 306 |
-| Active customers (ordered in window) | 1,405 |
-| New customers (first order in window) | 184 |
-| Returning share of actives | 86.90% |
-| Multi-channel customers (in window) | 119 |
+| Current customers (at window end) | 9,184 |
+| Current subscribers (at window end) | 3,232 |
+| Current d2c customers (at window end) | 6,246 |
+| Current marketplace customers (at window end) | 2,653 |
+| Active customers (ordered in window) | 9,184 |
+| New customers (first order in window) | 4,544 |
+| Returning share of actives | 50.52% |
+| Multi-channel customers (in window) | 2,681 |
 
 ## All Time (2019-01-01 .. 2025-12-31)
 
 | KPI | Value |
 |---|---:|
-| Current customers (at window end) | 1,405 |
-| Current subscribers (at window end) | 409 |
-| Current d2c customers (at window end) | 812 |
-| Current marketplace customers (at window end) | 306 |
-| Active customers (ordered in window) | 4,516 |
-| New customers (first order in window) | 4,516 |
+| Current customers (at window end) | 9,184 |
+| Current subscribers (at window end) | 3,232 |
+| Current d2c customers (at window end) | 6,246 |
+| Current marketplace customers (at window end) | 2,653 |
+| Active customers (ordered in window) | 22,628 |
+| New customers (first order in window) | 22,628 |
 | Returning share of actives | 0.00% |
-| Multi-channel customers (in window) | 2,560 |
+| Multi-channel customers (in window) | 9,529 |
 
 ## Identity health (arrival rule applied as of 2025-12-31)
 
 | Measure | Derived value |
 |---|---:|
-| Source aliases (4 systems, sum of profile rows) | 14,783 |
-| Unresolved aliases | 346 |
-| Resolution null rate | 0.023405 |
-| Canonical app profiles | 4,711 |
-| Ever-ordered canonical customers | 4,516 |
-| Avg source IDs per ordered customer | 3.154 |
-| Pre-migration Shopify aliases missing from crosswalk | 208 |
-| Pre-migration Salesforce aliases missing from crosswalk | 111 |
+| Source aliases (4 systems, sum of profile rows) | 70,975 |
+| Unresolved aliases | 1,180 |
+| Resolution null rate | 0.016626 |
+| Canonical app profiles | 25,359 |
+| Ever-ordered canonical customers | 22,628 |
+| Avg source IDs per ordered customer | 2.964 |
+| Pre-migration Shopify aliases missing from crosswalk | 533 |
+| Pre-migration Salesforce aliases missing from crosswalk | 142 |
 
 Aliases by source system and resolution status:
 
 | Source system | Resolved | 2021 migration gap | Sync lag |
 |---|---:|---:|---:|
-| app_db | 4,711 | 0 | 0 |
-| salesforce | 2,067 | 111 | 13 |
-| shopify | 3,398 | 208 | 6 |
-| stripe | 4,261 | 0 | 8 |
+| app_db | 25,359 | 0 | 0 |
+| salesforce | 4,740 | 142 | 80 |
+| shopify | 17,963 | 533 | 197 |
+| stripe | 21,733 | 0 | 228 |

@@ -11,13 +11,28 @@ version: 2
 
 models:
   - name: stg_app_customers
-    description: "One row per canonical app customer, including profiles without orders."
+    description: "One row per canonical app customer, including profiles without orders. Unfiltered: test and internal accounts are present."
     columns:
       - name: app_db_customer_id
         description: "Canonical customer primary key."
         tests: [unique, not_null]
       - name: created_date
         description: "App profile creation date."
+        tests: [not_null]
+      - name: segment
+        description: "consumer, smb, or enterprise."
+        tests:
+          - not_null
+          - accepted_values:
+              values: [consumer, smb, enterprise]
+      - name: account_type
+        description: "customer, test, or internal. Only 'customer' rows count toward revenue; the marts apply that rule, staging does not."
+        tests:
+          - not_null
+          - accepted_values:
+              values: [customer, test, internal]
+      - name: acquisition_channel
+        description: "Canonical channel of the first order, or 'signup' for never-ordered accounts."
         tests: [not_null]
 
   - name: stg_stripe_customers
@@ -95,7 +110,9 @@ models:
 
   - name: stg_orders
     description: >
-      One row per order, all channels (d2c, business_subscription, marketplace).
+      One row per order, all channels, AS LANDED: d2c orders before 2022-06-01
+      carry channel = 'direct' (the unbackfilled rename) and orders from test /
+      internal accounts are present. fct_orders applies both documented rules.
       Carries the gross-vs-net wedge: gross_amount is the full ticket,
       net_amount is what Shorelane earns (marketplace -> take only).
     columns:
@@ -180,3 +197,176 @@ models:
         description: "Date the dollars are recognized (grain with order_id)."
         tests:
           - not_null
+
+  - name: stg_products
+    description: "One row per SKU with category, supplier, unit cost, and list price."
+    columns:
+      - name: sku
+        description: "Natural key."
+        tests: [unique, not_null]
+      - name: category
+        description: "Merchandise category."
+        tests:
+          - not_null
+          - accepted_values:
+              values: [paper, writing, office_tech, furniture, breakroom, storage]
+      - name: supplier_id
+        description: "Supplier of record."
+        tests:
+          - not_null
+          - relationships:
+              to: ref('stg_suppliers')
+              field: supplier_id
+
+  - name: stg_order_lines
+    description: "One row per line on a consumer order. Subscription orders have no lines."
+    columns:
+      - name: order_line_id
+        description: "Natural key."
+        tests: [unique, not_null]
+      - name: order_id
+        description: "Parent consumer order."
+        tests:
+          - not_null
+          - relationships:
+              to: ref('stg_orders')
+              field: order_id
+      - name: sku
+        description: "Product on the line."
+        tests:
+          - not_null
+          - relationships:
+              to: ref('stg_products')
+              field: sku
+
+  - name: stg_plans
+    description: "One row per plan across three grandfathered generations."
+    columns:
+      - name: plan_id
+        description: "Natural key."
+        tests: [unique, not_null]
+      - name: plan_generation
+        description: "1, 2, or 3."
+        tests:
+          - not_null
+          - accepted_values:
+              values: [1, 2, 3]
+              quote: false
+      - name: is_current
+        description: "True only for the generation still sold; NOT a liveness flag."
+        tests: [not_null]
+
+  - name: stg_plan_prices
+    description: "One row per plan per effective date."
+    columns:
+      - name: plan_id
+        description: "Plan the price applies to."
+        tests:
+          - not_null
+          - relationships:
+              to: ref('stg_plans')
+              field: plan_id
+      - name: effective_date
+        description: "Price applies to terms starting on or after this date."
+        tests: [not_null]
+
+  - name: stg_subscriptions
+    description: "One row per 12-month subscription term; renewals chain via renewed_from_subscription_id."
+    columns:
+      - name: subscription_id
+        description: "Term natural key."
+        tests: [unique, not_null]
+      - name: customer_id
+        description: "Canonical app customer."
+        tests:
+          - not_null
+          - relationships:
+              to: ref('stg_app_customers')
+              field: app_db_customer_id
+      - name: plan_id
+        description: "Plan for the term (unchanged across renewals)."
+        tests:
+          - not_null
+          - relationships:
+              to: ref('stg_plans')
+              field: plan_id
+      - name: order_id
+        description: "The business_subscription order billing this term."
+        tests:
+          - unique
+          - not_null
+          - relationships:
+              to: ref('stg_orders')
+              field: order_id
+      - name: status
+        description: "renewed, active, or churned (as-of masking keeps running terms 'active')."
+        tests:
+          - not_null
+          - accepted_values:
+              values: [renewed, active, churned]
+
+  - name: stg_promotions
+    description: "One row per promo code."
+    columns:
+      - name: promo_code
+        description: "Natural key."
+        tests: [unique, not_null]
+
+  - name: stg_suppliers
+    description: "One row per supplier."
+    columns:
+      - name: supplier_id
+        description: "Natural key."
+        tests: [unique, not_null]
+
+  - name: stg_supplier_shipments
+    description: "One row per supplier-week of inbound stock."
+    columns:
+      - name: shipment_id
+        description: "Natural key."
+        tests: [unique, not_null]
+      - name: supplier_id
+        description: "Shipping supplier."
+        tests:
+          - not_null
+          - relationships:
+              to: ref('stg_suppliers')
+              field: supplier_id
+      - name: status
+        description: "received, partial, delayed, or in_transit (as-of masking)."
+        tests:
+          - not_null
+          - accepted_values:
+              values: [received, partial, delayed, in_transit]
+
+  - name: stg_ad_spend
+    description: "One row per platform-day of paid media."
+    columns:
+      - name: spend_date
+        description: "Grain with platform."
+        tests: [not_null]
+      - name: platform
+        description: "google, meta, or tiktok."
+        tests:
+          - not_null
+          - accepted_values:
+              values: [google, meta, tiktok]
+
+  - name: stg_tickets
+    description: "One row per Zendesk ticket keyed by a source-native requester identity."
+    columns:
+      - name: ticket_id
+        description: "Natural key."
+        tests: [unique, not_null]
+      - name: requester_source_system
+        description: "salesforce, stripe, or app_db."
+        tests:
+          - not_null
+          - accepted_values:
+              values: [salesforce, stripe, app_db]
+      - name: status
+        description: "solved or open."
+        tests:
+          - not_null
+          - accepted_values:
+              values: [solved, open]

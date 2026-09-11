@@ -1,0 +1,14 @@
+version: 2
+
+# dim_date_seed is the portable date spine (2019-01-01 .. 2027-12-31): a seed
+# rather than generate_date_array / generate_series so one model set builds on
+# both warehouses. Regenerate with the snippet in README.md if the timeline moves.
+seeds:
+  - name: dim_date_seed
+    config:
+      column_types:
+        date_day: date
+        month_start: date
+        quarter_start: date
+        year_start: date
+        is_weekend: boolean

@@ -4,7 +4,8 @@ Fivetran-shaped landing tables emitted by `generators.dataset.generate()`. This 
 documents the exact generated columns after identity enrichment, including the
 source-native customer IDs now appended to invoices and refunds. See
 `customer_identity.md` for customer tables, crosswalk semantics, and safe identity
-resolution.
+resolution, and `commerce.md` for the catalog, subscription, marketing, supply, and
+support tables added in v4.
 
 Types below are the generated pandas DataFrame dtypes. Timestamp values represent
 business dates at day precision even though pandas stores some at nanosecond
@@ -23,11 +24,18 @@ is a separate modeling concern.
 |---|---|---:|---|
 | `order_id` | string (`object`) | no | App-native order ID. |
 | `customer_id` | string (`object`) | no | FK to `app_db__customers.app_db_customer_id`. |
-| `channel` | string (`object`) | no | `d2c`, `business_subscription`, or `marketplace`. |
+| `channel` | string (`object`) | no | `d2c`, `business_subscription`, or `marketplace` — **and `direct` on d2c orders before 2022-06-01** (the unbackfilled channel rename; coalesce to `d2c`). |
 | `order_date` | timestamp (`datetime64[s]`) | no | Order event date and arrival timestamp. |
 | `gross_amount` | `float64` | no | Full ticket value; marketplace is full retail price. |
 | `take_rate` | `float64` | yes | Marketplace take rate (0.15–0.25); null for d2c and business subscriptions. |
 | `net_amount` | `float64` | no | Amount Shorelane earns; marketplace is `gross_amount * take_rate`. |
+| `promo_code` | string | yes | FK to `app_db__promotions.promo_code` when a promo was applied. |
+| `subscription_id` | string | yes | FK to `app_db__subscriptions.subscription_id` for `business_subscription` orders; null otherwise. |
+
+Orders from test and internal accounts (`app_db__customers.account_type != 'customer'`)
+are present here and in staging; `generators/measures.py` and `fct_revenue` exclude them.
+Consumer orders' `gross_amount` is the sum of their `app_db__order_lines`; subscription
+orders' `gross_amount` is the term ACV from `app_db__subscriptions`.
 
 ## `app_db__invoices`
 

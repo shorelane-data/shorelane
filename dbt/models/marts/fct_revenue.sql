@@ -8,6 +8,10 @@
 -- this mart is the warehouse expression of it. If they drift, the eval ground
 -- truth is no longer trustworthy.
 --
+-- v4: orders from non-'customer' accounts (app_db__customers.account_type in
+-- 'test', 'internal') are EXCLUDED here, exactly as measures.py excludes them.
+-- Staging is unfiltered, so a sum over stg_orders is the silent-SQL number.
+--
 -- The five measures:
 --   gmv                full ticket (incl. full marketplace price), gross of refunds
 --   net_revenue        what Shorelane earns (marketplace -> take only), net of refunds
@@ -16,10 +20,29 @@
 --   collected_cash     cash received in period (net-30 timing + bad debt + refunds out)
 -- ----------------------------------------------------------------------------
 
-with orders as (select * from {{ ref('stg_orders') }}),
-     invoices as (select * from {{ ref('stg_invoices') }}),
-     recognition as (select * from {{ ref('stg_revenue_recognition') }}),
-     refunds as (select * from {{ ref('stg_refunds') }}),
+with eligible_orders as (
+    select orders.*
+    from {{ ref('stg_orders') }} as orders
+    inner join {{ ref('stg_app_customers') }} as customers
+        on orders.customer_id = customers.app_db_customer_id
+    where customers.account_type = 'customer'
+),
+     orders as (select * from eligible_orders),
+     invoices as (
+        select invoices.*
+        from {{ ref('stg_invoices') }} as invoices
+        inner join eligible_orders on invoices.order_id = eligible_orders.order_id
+     ),
+     recognition as (
+        select recognition.*
+        from {{ ref('stg_revenue_recognition') }} as recognition
+        inner join eligible_orders on recognition.order_id = eligible_orders.order_id
+     ),
+     refunds as (
+        select refunds.*
+        from {{ ref('stg_refunds') }} as refunds
+        inner join eligible_orders on refunds.order_id = eligible_orders.order_id
+     ),
 
 -- 1. GMV: full gross ticket at order date.
 gmv as (

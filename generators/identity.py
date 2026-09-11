@@ -1,7 +1,7 @@
 """Deterministic source-native customer identity fragmentation.
 
-Identity randomness is isolated from the legacy revenue streams:
-  stream 10: unused app-customer pool creation dates
+Identity randomness is isolated from the commerce streams:
+  stream 10: (retired in v4 — sign-up dates now come from generators/customers.py)
   stream 11: opaque Stripe ID assignment
   stream 12: opaque Shopify ID assignment
   stream 13: opaque Salesforce ID assignment
@@ -21,7 +21,7 @@ import numpy as np
 import pandas as pd
 
 import config
-from generators.common import make_rng, random_dates
+from generators.common import canonical_channel, make_rng
 
 
 def _assign_ids(
@@ -38,8 +38,9 @@ def _assign_ids(
 
 
 def _first_channel_date(orders: pd.DataFrame, channels: set[str]) -> pd.Series:
+    canonical = canonical_channel(orders.channel)
     return (
-        orders.loc[orders.channel.isin(channels)]
+        orders.loc[canonical.isin(channels)]
         .groupby("customer_id", sort=True)["order_date"]
         .min()
     )
@@ -57,39 +58,36 @@ def _source_frame(
     )
 
 
+REQUIRED_COMMERCE_TABLES = (
+    "app_db__customers",
+    "app_db__orders",
+    "app_db__invoices",
+    "stripe__refunds",
+)
+
+
 def generate(
-    legacy_tables: dict[str, pd.DataFrame], *, plant_migration_gap: bool = True
+    commerce_tables: dict[str, pd.DataFrame], *, plant_migration_gap: bool = True
 ) -> dict[str, pd.DataFrame]:
-    """Copy/enrich legacy frames and return all identity raw tables.
+    """Copy/enrich commerce frames and append the identity raw tables.
 
     ``plant_migration_gap=False`` is the auditable test seam for inspecting the
     complete pre-deletion bridge. Canonical dataset generation always uses the
     default and therefore exposes only the intentionally incomplete crosswalk.
     """
-    legacy_names = (
-        "app_db__orders",
-        "app_db__invoices",
-        "app_db__revenue_recognition",
-        "stripe__refunds",
-    )
-    if tuple(legacy_tables) != legacy_names:
-        raise ValueError(f"identity generator expected legacy tables {legacy_names!r}")
+    missing = [name for name in REQUIRED_COMMERCE_TABLES if name not in commerce_tables]
+    if missing:
+        raise ValueError(f"identity generator missing commerce tables {missing!r}")
 
-    tables = {name: frame.copy(deep=True) for name, frame in legacy_tables.items()}
+    tables = {name: frame.copy(deep=True) for name, frame in commerce_tables.items()}
     orders = tables["app_db__orders"]
-    customer_pool = [f"cust_{number:06d}" for number in range(config.N_ORDERS // 3 + 1)]
+    app_customers = tables["app_db__customers"]
+    customer_pool = sorted(app_customers.app_db_customer_id)
 
-    # Ordered app customers exist no later than their first order. The unused pool
-    # receives deterministic creation dates so the complete operational pool can
-    # also arrive progressively in as-of loads.
-    app_first_order = orders.groupby("customer_id", sort=True).order_date.min()
+    # Ordered app customers exist no later than their first order (the commerce
+    # generator sets created_at from the first order / sign-up date).
     pool_dates = pd.Series(
-        pd.to_datetime(random_dates(make_rng(stream=10), config.START_DATE, config.END_DATE, len(customer_pool))),
-        index=customer_pool,
-    )
-    pool_dates.loc[app_first_order.index] = app_first_order
-    app_customers = pd.DataFrame(
-        {"app_db_customer_id": customer_pool, "created_at": pool_dates.loc[customer_pool].values}
+        pd.to_datetime(app_customers.created_at.values), index=app_customers.app_db_customer_id.values
     )
 
     stripe_created = _first_channel_date(orders, {"d2c", "marketplace"})
@@ -207,7 +205,6 @@ def generate(
 
     return {
         **tables,
-        "app_db__customers": app_customers,
         "stripe__customers": stripe_customers,
         "shopify__customers": shopify_customers,
         "salesforce__customers": salesforce_customers,

@@ -8,6 +8,7 @@ import pandas as pd
 
 import config
 from generators import dataset, identity, orders
+from generators.common import canonical_channel
 from loaders.visibility import visible_tables
 
 EXTERNAL_TABLES = {
@@ -27,6 +28,7 @@ def main() -> int:
     legacy = orders.generate()
     first = dataset.generate()
     second = dataset.generate()
+    # "legacy" here means the commerce tables identity enriches; v4 appends only to invoices/refunds.
 
     for name in first:
         try:
@@ -82,7 +84,7 @@ def main() -> int:
     )
 
     orders_frame = first["app_db__orders"]
-    ordered = orders_frame.groupby("customer_id")["channel"].agg(set)
+    ordered = canonical_channel(orders_frame["channel"]).groupby(orders_frame["customer_id"]).agg(set)
     active = observed[observed["is_active"]]
     complete = identity.generate(legacy, plant_migration_gap=False)
     complete_crosswalk = complete["app_db__customer_id_crosswalk"]

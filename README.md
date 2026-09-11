@@ -16,29 +16,27 @@ revenue"). See Hex's write-up:
 [How we evaluate data agents](https://hex.tech/blog/evaluate-data-agents/). This
 repo is an independent, open reimplementation of that idea as a public fixture.
 
-This repo ships one complete vertical slice: the **five revenues** trap, where a
-plain "what was our revenue?" has five individually-defensible answers and a naive
-agent picks one with false confidence. See `CLAUDE.md` for the full design contract.
+The fixture's signature trap is the **five revenues**, where a plain "what was our
+revenue?" has five individually-defensible answers and a naive agent picks one with
+false confidence. v4 adds a second layer: a business with growth, seasonality, a
+customer lifecycle, a product catalog with unit cost, three grandfathered
+subscription plan generations, and **five seeded events with known causes** — so
+"why did X happen?" and "what should we do?" have derivable answers too. See
+`CLAUDE.md` for the full design contract.
 
 ### Dataset release status
 
-The **shorelane-v3 local/generated release candidate** expands the raw
-fixture from four to nine tables with app, Stripe, Shopify, and Salesforce customer
-identities plus an intentionally incomplete customer-ID crosswalk. It also adds
-source-native Salesforce IDs to invoices and Stripe IDs to refunds. Generate those
-files locally with `make generate`; their exact landing contracts are in
-`raw_schema/revenue_slice.md` and `raw_schema/customer_identity.md`.
+**shorelane-v4** (package `4.0.0`) is the business-dynamics release: nineteen raw
+tables across app_db, Stripe, Shopify, Salesforce, an ERP, ad platforms, and Zendesk.
+Every committed figure in `context/ground_truth/` is derived from the generators
+(`make ground-truth` re-derives all of them) and guarded by `make test`. Landing
+contracts: `raw_schema/revenue_slice.md`, `raw_schema/customer_identity.md`,
+`raw_schema/commerce.md`. Seeded events and their causes: `config.EVENTS` and
+`context/ground_truth/events.md`.
 
-The local generator-side eval triple is present: raw schemas, derived identity ground
-truth, a resolving guide and semantic artifact, and pinned questions/rubric. The
-portable dbt staging, identity bridge, safe customer dimension, quality mart, and
-singular tests are mirrored byte-for-byte from the reviewed `shorelane-dbt` PR #9
-commit recorded in `dbt/mirror_manifest.json`; run
-`python tests/check_dbt_mirror.py --canonical-root ../shorelane-dbt` to verify the
-sibling checkout. The identity vertical slice is still **not warehouse-complete**:
-the public BigQuery/private Redshift v3 migrations, loads, builds, and parity checks
-have not run. The package also remains at `2.2.0` until coordinated release. The
-public-demo instructions below describe the currently deployed warehouse surface.
+Warehouse status: the public BigQuery datasets are loaded from v4 (`shorelane_raw`
+and the dbt layer in `shorelane`). The private Redshift warehouse has **not** been
+migrated to v4 and its parity job is expected to be red until that follow-up.
 
 ## Public demo
 
@@ -176,19 +174,19 @@ The warehouse connection runs through Google's
 
 6. **Verify.** `claude mcp list` should show `bigquery: ✔ Connected`; then ask
    the agent to list the tables in `nodal-shorelane.shorelane` — you should see
-   `fct_revenue` and the four staging views.
+   `fct_revenue` alongside the other marts and staging views.
 
 7. **Explore the currently deployed public schema.** Ask your agent (Claude Code,
    Codex, Gemini, …):
    *"What tables do you have access to?"* It should report two datasets in
-   `nodal-shorelane`, nine tables in all:
+   `nodal-shorelane`:
 
-   - `shorelane_raw` — the landing tables, as loaded from Parquet:
-     `app_db__orders`, `app_db__invoices`, `app_db__revenue_recognition`,
-     `stripe__refunds`
-   - `shorelane` — the dbt-built layer: staging views over the raw tables
-     (`stg_orders`, `stg_invoices`, `stg_refunds`,
-     `stg_revenue_recognition`) plus `fct_revenue`
+   - `shorelane_raw` — the nineteen landing tables, as loaded from Parquet
+     (see `raw_schema/`)
+   - `shorelane` — the dbt-built layer: one staging view per raw table, the
+     identity bridge, and the marts (`fct_revenue`, `fct_orders`,
+     `fct_order_lines`, `fct_subscriptions`, `fct_marketing_spend`,
+     `dim_customers`, `dim_products`, `dim_plans`, `dim_date`, …)
 
 8. **Try the trap.** Ask something like *"What was the revenue in June
    2026?"* The question is intentionally ambiguous, and without context the
@@ -206,15 +204,15 @@ pip install -e .
 make verify        # generates data + prints the five revenues for Q1 2024
 ```
 
-Expected (dataset shorelane-v3, SEED=20190401):
+Expected (dataset shorelane-v4, SEED=20190401):
 
 | measure | Q1 2024 |
 |---|---:|
-| gmv | $1,359,503.83 |
-| net_revenue | $1,330,251.05 |
-| recognized_revenue | $1,428,393.18 ← canonical |
-| billed_revenue | $1,334,267.84 |
-| collected_cash | $1,164,885.32 |
+| gmv | $4,757,319.70 |
+| net_revenue | $4,598,755.88 |
+| recognized_revenue | $4,932,192.31 ← canonical |
+| billed_revenue | $4,630,254.31 |
+| collected_cash | $4,942,255.88 |
 
 If your numbers differ, the seed/economics changed — see "breaking changes" in
 `CLAUDE.md`.
@@ -222,11 +220,11 @@ If your numbers differ, the seed/economics changed — see "breaking changes" in
 ## What's here
 
 - `generators/` — seeded, deterministic data generation
-- `raw_schema/` — exact generated landing contracts for the revenue and customer-
-  identity tables
-- `dbt/` — staging + `fct_revenue` mart, one model set for both warehouses
+- `raw_schema/` — exact generated landing contracts for all nineteen tables
+- `dbt/` — staging + marts, one model set for both warehouses
 - `context/` — the Nodal layer: metric defs, LookML, personas, derived ground truth
-- `evals/` — questions + grading rubric for the revenue slice
+  (including `ground_truth/events.md`, the diagnostic/prescriptive substrate)
+- `evals/` — questions + grading rubrics (`refresh_questions.py` re-derives pinned values)
 - `loaders/` — warehouse loaders (BigQuery is the public one); `visibility.py`
   holds the arrival rule
 - `bi/` — dashboards (Looker Studio + Plotly)

@@ -5,6 +5,10 @@ This is the canonical definition. The dbt mart (dbt/models/marts/fct_revenue.sql
 must agree with this for any period; the eval harness derives ground truth from it.
 If you change a definition here, you change the planted trap — bump DATASET_VERSION
 and re-derive ground truth.
+
+v4: every measure EXCLUDES orders placed by non-'customer' accounts
+(app_db__customers.account_type in ('test', 'internal') — debt item #6). Raw and
+staging tables are unfiltered; fct_revenue applies the same exclusion.
 """
 from __future__ import annotations
 
@@ -15,11 +19,28 @@ def _in_period(s: pd.Series, start: str, end: str) -> pd.Series:
     return (s >= pd.Timestamp(start)) & (s <= pd.Timestamp(end))
 
 
-def five_revenues(tables: dict[str, pd.DataFrame], start: str, end: str) -> dict[str, float]:
+def eligible_order_ids(tables: dict[str, pd.DataFrame]) -> pd.Index:
+    """Orders from real customers: the exclusion predicate documented in context/."""
     orders = tables["app_db__orders"]
-    invoices = tables["app_db__invoices"]
-    recognition = tables["app_db__revenue_recognition"]
-    refunds = tables["stripe__refunds"]
+    customers = tables["app_db__customers"]
+    real = customers.loc[customers.account_type == "customer", "app_db_customer_id"]
+    return pd.Index(orders.loc[orders.customer_id.isin(real), "order_id"])
+
+
+def revenue_tables(tables: dict[str, pd.DataFrame]) -> dict[str, pd.DataFrame]:
+    """The four revenue tables restricted to eligible orders."""
+    keep = eligible_order_ids(tables)
+    return {
+        "orders": tables["app_db__orders"][tables["app_db__orders"].order_id.isin(keep)],
+        "invoices": tables["app_db__invoices"][tables["app_db__invoices"].order_id.isin(keep)],
+        "recognition": tables["app_db__revenue_recognition"][tables["app_db__revenue_recognition"].order_id.isin(keep)],
+        "refunds": tables["stripe__refunds"][tables["stripe__refunds"].order_id.isin(keep)],
+    }
+
+
+def five_revenues(tables: dict[str, pd.DataFrame], start: str, end: str) -> dict[str, float]:
+    t = revenue_tables(tables)
+    orders, invoices, recognition, refunds = t["orders"], t["invoices"], t["recognition"], t["refunds"]
 
     in_orders = orders[_in_period(orders.order_date, start, end)]
     refunds_in = refunds[_in_period(refunds.refund_date, start, end)]
