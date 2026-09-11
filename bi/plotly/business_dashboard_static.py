@@ -150,7 +150,7 @@ PAGE = """<!DOCTYPE html>
     <div class="logo">🌊</div>
     <div><h1>Shorelane Commerce</h1><div class="sub">Executive Revenue Dashboard</div></div>
   </div>
-  <div class="badge">● Source of truth · Recognized revenue (GAAP){asof_badge}</div>
+  <div class="badge">● Revenue · Recognized (GAAP){asof_badge}</div>
 </div>
 <div class="controls">
   <span class="plabel">Period</span>
@@ -203,12 +203,9 @@ def main() -> None:
 
     asof_badge = f" · as of {as_of.date()}" if as_of is not None else ""
     footer = (
-        f"Figures derived from the seeded generators (dataset {config.DATASET_VERSION}, SEED={config.SEED})"
-        + (f", filtered by the warehouse arrival rule as of {as_of.date()} — by the parity property this page "
-           f"equals the live warehouse, with no credentials involved" if as_of is not None else "")
-        + '. Validate with: <code>python -m bi.dashboard_data --anchor '
-        + end_month.strftime("%Y-%m")
-        + '</code> · <a href="../explore.html">About this data</a>'
+        (f"Data as of {as_of.date()}" if as_of is not None else "Full dataset")
+        + ' · <a href="../explore.html">About this data</a> · '
+        + '<a href="../customers/">Customers dashboard</a>'
     )
 
     html = PAGE.format(
