@@ -1,21 +1,114 @@
 version: 2
 
-# Downstream consumers of fct_revenue, declared so lineage tools and manifest
-# miners (nodal-context dbt_extract.py) can see where the mart actually lands.
+# Downstream consumers of the marts, declared so lineage tools and manifest
+# miners (nodal-context dbt_extract.py) can see where each mart actually lands.
+#
+# The four public dashboards are rendered by shorelane's `pages` workflow
+# (bi/plotly/*_dashboard_static.py, --as-of today) on a daily cron at 08:00 UTC,
+# after the 05:00 load and 06:00 dbt warehouse jobs. They read no warehouse:
+# deterministic generation plus the arrival rule reproduce exactly what the
+# marts hold (the parity property), so each page is the mart's twin as of today.
+# Ground-truth KPI tables for each page live in shorelane's
+# context/ground_truth/<page>_dashboard.md, pinned to fully elapsed months.
 
 exposures:
-  - name: five_revenues_public_dashboard
-    label: "Five revenues — public demo dashboard"
+  - name: executive_revenue_dashboard
+    label: "Executive Revenue Dashboard"
     type: dashboard
-    url: https://shorelane-data.github.io/shorelane/dashboard/
+    url: https://shorelane-data.github.io/shorelane/business/
     maturity: high
     description: >
-      Public Plotly dashboard on the Shorelane demo site, re-rendered daily
-      as-of today. It is the deterministic twin of fct_revenue: by the parity
-      property, the seeded generators filtered by the arrival rule produce
-      exactly what this mart holds, with no warehouse credentials in CI.
+      Executive KPI page committed to ONE headline revenue, recognized (GAAP),
+      over four windows (last 6 / 12 / 24 months, all time) with prior-period
+      deltas: recognized revenue, GMV, active and new customers, average order
+      value (GMV ÷ orders), and refund rate (refunds ÷ GMV). Charts: recognized
+      revenue by month, revenue by channel, customer growth, orders and AOV,
+      recognized revenue vs collected cash. The five revenue measures are
+      fct_revenue; orders, AOV, and first-order customers are fct_orders at
+      canonical channel grain; test and internal accounts are excluded via
+      dim_customers.account_type.
     depends_on:
       - ref('fct_revenue')
+      - ref('fct_orders')
+      - ref('dim_customers')
+    owner:
+      name: Ron Potok
+
+  - name: customers_dashboard
+    label: "Customers Dashboard"
+    type: dashboard
+    url: https://shorelane-data.github.io/shorelane/customers/
+    maturity: high
+    description: >
+      Customer counts at the canonical app_db grain, never at source-alias
+      grain, with a channel filter (Business Subscriptions, Direct-to-Consumer,
+      Marketplace). KPIs: current customers (ordered in the trailing 12 calendar
+      months), current subscribers (active 12-month term), active and new
+      customers in window, returning share, and multi-channel customers.
+      Charts: current customers by month, current customer mix at window end,
+      active customers by month and channel, new vs returning. An "Identity
+      health" block reports source aliases across the four systems, resolution
+      null rate, canonical profiles, ever-ordered customers, average source IDs
+      per ordered customer, and the permanent pre-2021 Shopify migration gap,
+      plus a naive-vs-canonical customer count.
+    depends_on:
+      - ref('fct_orders')
+      - ref('fct_subscriptions')
+      - ref('dim_customers')
+      - ref('fct_identity_resolution_quality')
+    owner:
+      name: Ron Potok
+
+  - name: marketing_dashboard
+    label: "Marketing Dashboard"
+    type: dashboard
+    url: https://shorelane-data.github.io/shorelane/marketing/
+    maturity: high
+    description: >
+      Marketing page whose headline is GMV (full ticket, all channels, gross of
+      refunds) rather than recognized revenue. KPIs: GMV, consumer orders (d2c +
+      marketplace) and consumer AOV, new customers, ad spend across all
+      platforms, and CAC (ad spend ÷ warehouse-attributed new d2c customers,
+      never platform-reported conversions). Charts: GMV by channel, consumer
+      orders and AOV, ad spend vs new d2c customers, CAC by month, consumer line
+      revenue and gross margin by product category, promo orders and discount
+      dollars, and a table of promotions active in the window. GMV is
+      fct_revenue; orders and new d2c customers are fct_orders; category
+      revenue and margin are fct_order_lines joined to dim_products; spend and
+      attributed new customers are fct_marketing_spend; the promotions table
+      reads stg_promotions (no mart exists for it).
+    depends_on:
+      - ref('fct_revenue')
+      - ref('fct_orders')
+      - ref('fct_order_lines')
+      - ref('fct_marketing_spend')
+      - ref('dim_products')
+      - ref('stg_promotions')
+    owner:
+      name: Ron Potok
+
+  - name: subscriptions_fpa_dashboard
+    label: "Subscriptions (FP&A)"
+    type: dashboard
+    url: https://shorelane-data.github.io/shorelane/subscriptions/
+    maturity: high
+    description: >
+      FP&A subscriptions page at one row per 12-month term, real customers
+      only; renewals are new terms and "active at D" means a term containing D
+      at customer grain. KPIs: active subscribers at window end, ACV under
+      contract, new subscriptions (first terms started), renewal rate among
+      terms decided in the window (still-running terms excluded), ACV churned,
+      and ACV per seat on new subscriptions. Charts: active subscribers by plan
+      generation, new / renewed / churned by month, renewal churn rate by
+      segment (quarter of term end), ACV per seat on new subscriptions, and an
+      active-subscribers-by-plan table across all three plan generations
+      (pro_v1, starter_v1, enterprise_v2, office_v2, team_v2, enterprise,
+      essentials, growth). Terms and outcomes are fct_subscriptions; plan
+      generation and per-seat price are dim_plans.
+    depends_on:
+      - ref('fct_subscriptions')
+      - ref('dim_plans')
+      - ref('dim_customers')
     owner:
       name: Ron Potok
 

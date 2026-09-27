@@ -1,6 +1,6 @@
 {
   "canonical_repo_url": "https://github.com/shorelane-data/shorelane-dbt.git",
-  "canonical_commit": "7f6388172abad8a236bdf30c9aae682b9ae2a896",
+  "canonical_commit": "9ca707dd268d68dd84803a901824005a877182a4",
   "files": [
     {
       "source": "dbt_project.yml",
@@ -25,7 +25,7 @@
     {
       "source": "models/marts/_exposures.yml",
       "mirror": "dbt/models/marts/_exposures.yml",
-      "sha256": "649a7dd846d6e43200ba387264b20e45e773bede14f85db65b1559b5b701338c"
+      "sha256": "937dbf53fabb5c6ac7734ace8e12a73dcca5be068772e574cdc736d69e3336e9"
     },
     {
       "source": "models/marts/_marts.yml",
