@@ -35,8 +35,11 @@ contracts: `raw_schema/revenue_slice.md`, `raw_schema/customer_identity.md`,
 `context/ground_truth/events.md`.
 
 Warehouse status: the public BigQuery datasets are loaded from v4 (`shorelane_raw`
-and the dbt layer in `shorelane`). The private Redshift warehouse has **not** been
-migrated to v4 and its parity job is expected to be red until that follow-up.
+and the dbt layer in `shorelane`). The private Redshift warehouse is frozen at v3 and
+no longer tracks releases; BigQuery is the maintained warehouse.
+
+Agent benchmark: three context modes (none / dbt / dbt + analytics context) against
+a frozen BigQuery snapshot. See `bench/README.md`.
 
 ## Public demo
 

@@ -1,0 +1,83 @@
+# The three context modes of the Shorelane analytics-agent benchmark.
+#
+# Every mode queries the SAME warehouse (the frozen bench dataset) through the
+# same tool with the same prompt. The only thing that varies is which files are
+# in the agent's working directory, so the difference between two modes is
+# exactly the context those files add:
+#
+#   none         no dbt project, no analytics context. Tables and columns only.
+#   dbt          + the dbt project (SQL, YAML descriptions, tests, macros).
+#                dbt owns its documentation; whatever it says counts as dbt.
+#   dbt_context  + the analytics-context layer (ACF: terminology, domain
+#                references, metrics, entities).
+#
+#   dbt - none          = lift from the modeled, documented dbt project
+#   dbt_context - dbt   = lift from the analytics context   (the headline number)
+#
+# The dataset holds no warehouse-side descriptions (shorelane-dbt never enables
+# persist_docs), so `none` really is tables and column names only.
+#
+# Build a workspace:   python -m bench.workspace build --mode dbt --out /tmp/ws ...
+# Check all modes:     python -m bench.workspace check ...
+# See bench/README.md.
+
+bench_version: v1
+
+warehouse:
+  project: nodal-shorelane
+  dataset: shorelane_bench_v1
+  # Recorded by shorelane-dbt's bench-build in shorelane_bench_v1._bench_build.
+  as_of: null
+
+# Given to the agent verbatim in every mode. It names the warehouse and says the
+# working directory may hold files; it never says what they are, so no mode's
+# prompt hints at context another mode lacks.
+preamble: >-
+  You are answering a question about Shorelane Commerce, an office-supplies
+  business. Query the BigQuery dataset `{project}.{dataset}` (data as of {as_of})
+  with the SQL tool you have been given; it is read-only. Your working directory
+  may contain project files you can use.
+
+sources:
+  dbt:
+    repo: https://github.com/shorelane-data/shorelane-dbt.git
+    # Must equal shorelane_bench_v1._bench_build.dbt_commit: the project the agent
+    # reads has to be the one that built the tables it queries. Set after the
+    # first bench-build; until then only --allow-unpinned builds work.
+    commit: null
+    mount: dbt
+    include:
+      - dbt_project.yml
+      - models/**
+      - macros/**
+      - seeds/**
+      - tests/*.sql
+    # Everything else in the repo is left out on purpose: the parity checks
+    # (they import the reference measures), CI and deployment files, Python
+    # tooling, and the README's prose about the fixture and its traps. None of it
+    # is the dbt project an analyst would open.
+    exclude: []
+
+  context:
+    repo: https://github.com/shorelane-data/shorelane-analytics-context.git
+    commit: 14d4aab6cd0905bb6d5563a0975d43903a8fa03a
+    mount: context
+    include:
+      - company/**
+      - domains/**
+      - entities/**
+    exclude:
+      - domains/_domain-template/**
+      - entities/_entity-template.yaml
+    # The ACF answering procedure ships as AGENTS.md, a name Codex loads on its
+    # own. Mounted under a neutral name so every agent meets it the same way.
+    rename:
+      AGENTS.md: README.md
+
+modes:
+  none:
+    sources: []
+  dbt:
+    sources: [dbt]
+  dbt_context:
+    sources: [dbt, context]

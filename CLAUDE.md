@@ -80,11 +80,13 @@ generators/ (seeded Python)
 
 ### Warehouse policy
 - **BigQuery is primary** (cheap on GCS credits; free tier covers this scale).
-- **Redshift Serverless is a full second warehouse**, not a mirror. It runs the
-  same generators, the same dbt models and the same parity contract, so the
-  fixture is demonstrably not BigQuery-shaped — and so an AWS-native prospect
-  sees it on the warehouse they actually run. See `shorelane-pipeline/terraform/`.
-- **Snowflake remains a stub.** Redshift now carries the cross-tool claim.
+- **Redshift Serverless is frozen at v3** and is no longer kept in step with
+  BigQuery (decided 2026-09). The stack in `shorelane-pipeline/terraform/` stays for
+  reference; its image build and parity job are gated on `SHORELANE_REDSHIFT_PAUSED`
+  (unset = paused) so they never share a switch with the BigQuery jobs. New work,
+  including the agent benchmark, targets BigQuery only. The models stay ANSI and
+  `money()` stays, so unfreezing remains possible.
+- **Snowflake remains a stub.**
 - Keep generation warehouse-neutral (Parquet, or in-memory via `--generate`).
 - **dbt is dual-warehouse via one model set.** The models are plain ANSI SQL; the
   only dialect difference is the `money()` macro. There is no portable spelling
@@ -99,10 +101,11 @@ generators/ (seeded Python)
 
 ### Parity is per-warehouse
 `parity/check_parity.py` and `parity/check_parity_redshift.py` both compare
-`fct_revenue` against `measures.py`, and both run weekly. They are separate
-because the warehouses can drift **independently** — the decimal trap above
-would break Redshift while BigQuery stayed green. A pass on one says nothing
-about the other.
+`fct_revenue` against `measures.py`. They are separate because the warehouses
+can drift **independently** — the decimal trap above would break Redshift while
+BigQuery stayed green. BigQuery parity runs weekly and must pass; the Redshift job
+runs only when Redshift is unfrozen. `check_parity.py --dataset shorelane_bench_<v>`
+checks a benchmark build the same way.
 
 `shorelane/tests/check_ground_truth.py` covers the gap neither parity job can:
 both compare the warehouse to `measures.py`, so a change that perturbs the RNG
@@ -203,7 +206,7 @@ live pipeline can drip-feed the warehouse daily while the Parquet stays canonica
   `tag-on-version` workflow cuts the tag from `pyproject.toml` on merge, and
   each consumer's `check-pin` fails if its pin is not the latest tag.
 
-### The AWS side (Redshift)
+### The AWS side (Redshift — frozen at v3, see Warehouse policy)
 
 Same cadence and the same four identities as GCP, but the runtime is different
 and the reason is worth knowing:
@@ -231,6 +234,31 @@ and the reason is worth knowing:
 - Ground-truth windows must be **fully elapsed calendar windows** (see
   `--anchor` in `bi/dashboard_data.py`) so they stay valid on the live
   warehouse.
+
+## The agent benchmark (BigQuery)
+
+Scope: measure what context adds to an analytics agent. Three **context modes**
+(`bench/modes.yaml`, `bench/README.md`) against one frozen warehouse:
+
+| Mode | Agent's working directory |
+|---|---|
+| `none` | empty. Tables and column names only. |
+| `dbt` | the shorelane-dbt project. dbt owns its docs; they count as dbt. |
+| `dbt_context` | dbt + the ACF analytics-context layer. |
+
+Rules that keep the ablation honest. Do not weaken them:
+- **One frozen warehouse per bench version.** `shorelane_raw_bench_<v>` (loader
+  `--frozen`, fixed past `as_of`) → dbt `--target bench` → `shorelane_bench_<v>`
+  (all tables, parity-checked, stamped with the building dbt commit in
+  `_bench_build`). The daily `shorelane` dataset moves every day and is never a
+  benchmark target. A new snapshot is a new version.
+- **Context reaches agents only as mounted files.** No `persist_docs` on any
+  target, and no auto-loaded instruction files (`CLAUDE.md`, `AGENTS.md`,
+  `GEMINI.md`, …) in any workspace. `bench/leakage.py` enforces the latter along
+  with no eval material and no graded numbers. Keep graded numbers out of dbt
+  YAML and ACF files.
+- **Sources are pinned.** The dbt commit in `modes.yaml` must equal
+  `_bench_build.dbt_commit`.
 
 ## Public demo surface
 
@@ -277,6 +305,8 @@ make load-redshift BUCKET=... COPY_ROLE_ARN=... [AS_OF=YYYY-MM-DD]
 make dbt         # staging + marts (needs ~/.dbt/profiles.yml)
 make site        # assemble the public Pages site (dashboards) into _site/
 
+make bench-check  # build + leakage-scan the three benchmark context modes
+
 python tests/check_ground_truth.py   # committed figures still derive from the generators
 ```
 
@@ -307,6 +337,8 @@ context/                  THE NODAL LAYER
   guides/                 personas + source-of-truth rules
   ground_truth/           derived answers, keyed to evals
 evals/                    questions.yaml + rubrics/
+bench/                    agent-benchmark context modes: modes.yaml, workspace.py,
+                          leakage.py (see bench/README.md)
 tests/check_ground_truth.py  guards context/ground_truth/ against RNG drift
 loaders/                  bigquery_load.py (primary), redshift_load.py (second),
                           visibility.py (arrival rule, warehouse-neutral),
