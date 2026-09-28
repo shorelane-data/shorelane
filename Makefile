@@ -1,6 +1,6 @@
 # Shorelane build pipeline. `make help` for targets.
 
-.PHONY: help install install-bq install-redshift generate verify ground-truth test load-bq load-redshift dbt manifest manifest-fetch site biz-dashboard validate-dashboard clean
+.PHONY: help install install-bq install-redshift generate verify ground-truth test bench-check load-bq load-redshift dbt manifest manifest-fetch site biz-dashboard validate-dashboard clean
 
 help:
 	@grep -E '^[a-zA-Z_-]+:.*?# .*$$' $(MAKEFILE_LIST) | sort | \
@@ -42,6 +42,11 @@ test: # run every contract check (what CI runs)
 	python tests/check_identity_eval.py
 	python tests/check_event_ground_truth.py
 	python tests/check_dbt_mirror.py
+	python tests/check_bench_modes.py
+
+bench-check: # build + leakage-scan all three benchmark context modes (DBT=../shorelane-dbt CONTEXT=../shorelane-analytics-context)
+	python -m bench.workspace check --dbt $(or $(DBT),../shorelane-dbt) \
+		--context $(or $(CONTEXT),../shorelane-analytics-context) $(if $(PINNED),,--allow-unpinned)
 
 load-bq: # load raw Parquet into BigQuery (set PROJECT=...)
 	python -m loaders.bigquery_load --project $(PROJECT)

@@ -35,8 +35,11 @@ contracts: `raw_schema/revenue_slice.md`, `raw_schema/customer_identity.md`,
 `context/ground_truth/events.md`.
 
 Warehouse status: the public BigQuery datasets are loaded from v4 (`shorelane_raw`
-and the dbt layer in `shorelane`). The private Redshift warehouse has **not** been
-migrated to v4 and its parity job is expected to be red until that follow-up.
+and the dbt layer in `shorelane`). The private Redshift warehouse is frozen at v3 and
+no longer tracks releases; BigQuery is the maintained warehouse.
+
+Agent benchmark: three context modes (none / dbt / dbt + analytics context) against
+a frozen BigQuery snapshot. See `bench/README.md`.
 
 ## Public demo
 
@@ -147,6 +150,15 @@ The warehouse connection runs through Google's
    Or grab a release binary from the
    [releases page](https://github.com/googleapis/mcp-toolbox/releases),
    `chmod +x` it, and put it on your `PATH` as `toolbox`.
+
+   Or use the repo's installer. It pins the version, verifies the checksum, and
+   does nothing if that version is already installed. It is also what a Claude Code
+   cloud environment's setup script should run:
+
+   ```bash
+   bash scripts/install_mcp_toolbox.sh                      # -> /usr/local/bin/toolbox
+   INSTALL_DIR="$HOME/.local/bin" bash scripts/install_mcp_toolbox.sh
+   ```
 
 3. **Authenticate to Google Cloud.** Any Google account works — a personal
    Gmail is fine; you don't need a work account or an invite from us. The
