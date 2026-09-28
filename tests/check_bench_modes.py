@@ -16,6 +16,8 @@ import sys
 import tempfile
 import unittest
 
+import yaml
+
 REPO_ROOT = pathlib.Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(REPO_ROOT))
 
@@ -173,14 +175,27 @@ class ModesTest(unittest.TestCase):
             self.build("dbt")
 
     def test_cli_writes_manifest_outside_workspace(self):
+        # The committed config pins real commits; point the CLI at a copy pinned
+        # to the throwaway repo's commit instead.
+        raw = yaml.safe_load(workspace.MODES_PATH.read_text())
+        raw["sources"]["dbt"]["commit"] = self.dbt_commit
+        config = self.root / "modes.yaml"
+        config.write_text(yaml.safe_dump(raw))
         out, manifest = self.root / "ws", self.root / "ws.json"
         rc = workspace.main(["build", "--mode", "dbt", "--out", str(out), "--manifest", str(manifest),
-                             "--dbt", str(self.root / "dbt"), "--allow-unpinned"])
+                             "--dbt", str(self.root / "dbt"), "--config", str(config)])
         self.assertEqual(rc, 0)
         data = json.loads(manifest.read_text())
         self.assertEqual(data["mode"], "dbt")
-        self.assertFalse(data["sources"][0]["pinned"])
+        self.assertEqual(data["sources"][0], {
+            "name": "dbt", "repo": raw["sources"]["dbt"]["repo"], "commit": self.dbt_commit, "pinned": True,
+        })
         self.assertFalse((out / "ws.json").exists())
+
+    def test_committed_config_is_fully_pinned(self):
+        for name, source in CONFIG["sources"].items():
+            self.assertRegex(source.commit or "", r"^[0-9a-f]{40}$", f"{name} is not pinned")
+        self.assertRegex(CONFIG["warehouse"]["as_of"] or "", r"^\d{4}-\d{2}-\d{2}$")
 
 
 class GoldValuesTest(unittest.TestCase):

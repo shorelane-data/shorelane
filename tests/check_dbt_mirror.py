@@ -20,7 +20,7 @@ REPO_ROOT = pathlib.Path(__file__).resolve().parents[1]
 MIRROR_ROOT = REPO_ROOT / "dbt"
 MANIFEST_PATH = MIRROR_ROOT / "mirror_manifest.json"
 CANONICAL_URL = "https://github.com/shorelane-data/shorelane-dbt.git"
-CANONICAL_COMMIT = "9ca707dd268d68dd84803a901824005a877182a4"
+CANONICAL_COMMIT = "2830281dd3b84d4287bc0c7f5411d21e37f7f7a8"
 
 EXPECTED_SOURCE_PATHS = (
     "dbt_project.yml",

@@ -3,7 +3,7 @@ version: 2
 sources:
   - name: app_db
     description: "Shorelane's application database: customers, catalog, orders and lines, subscriptions and plans, billing, rev-rec, promotions, and the identity crosswalk."
-    schema: shorelane_raw
+    schema: "{{ var('raw_dataset') }}"
     tables:
       - name: app_db__customers
         identifier: app_db__customers
@@ -30,7 +30,7 @@ sources:
 
   - name: stripe
     description: "Payment processor customer identities and refunds."
-    schema: shorelane_raw
+    schema: "{{ var('raw_dataset') }}"
     tables:
       - name: stripe__customers
         identifier: stripe__customers
@@ -39,21 +39,21 @@ sources:
 
   - name: shopify
     description: "Commerce-platform source-native customer identities."
-    schema: shorelane_raw
+    schema: "{{ var('raw_dataset') }}"
     tables:
       - name: shopify__customers
         identifier: shopify__customers
 
   - name: salesforce
     description: "CRM source-native customer identities."
-    schema: shorelane_raw
+    schema: "{{ var('raw_dataset') }}"
     tables:
       - name: salesforce__customers
         identifier: salesforce__customers
 
   - name: erp
     description: "Supply-side ERP: suppliers and weekly inbound shipments."
-    schema: shorelane_raw
+    schema: "{{ var('raw_dataset') }}"
     tables:
       - name: erp__suppliers
         identifier: erp__suppliers
@@ -62,14 +62,14 @@ sources:
 
   - name: ads
     description: "Paid-media platform exports (Google, Meta, TikTok). Conversions are platform self-reported."
-    schema: shorelane_raw
+    schema: "{{ var('raw_dataset') }}"
     tables:
       - name: ads__daily_spend
         identifier: ads__daily_spend
 
   - name: zendesk
     description: "Support tickets keyed by source-native requester identities."
-    schema: shorelane_raw
+    schema: "{{ var('raw_dataset') }}"
     tables:
       - name: zendesk__tickets
         identifier: zendesk__tickets

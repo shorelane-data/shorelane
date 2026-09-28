@@ -1,11 +1,11 @@
 {
   "canonical_repo_url": "https://github.com/shorelane-data/shorelane-dbt.git",
-  "canonical_commit": "9ca707dd268d68dd84803a901824005a877182a4",
+  "canonical_commit": "2830281dd3b84d4287bc0c7f5411d21e37f7f7a8",
   "files": [
     {
       "source": "dbt_project.yml",
       "mirror": "dbt/dbt_project.yml",
-      "sha256": "b700c99c1b32f2eeaccb91816d2a43796dbabbaf60fdc9939de76d33bdde5c0a"
+      "sha256": "50675578622f67edb33e0815642538cd207a4fabd47511dae91b2e25f6981477"
     },
     {
       "source": "macros/money.sql",
@@ -85,7 +85,7 @@
     {
       "source": "models/staging/_sources.yml",
       "mirror": "dbt/models/staging/_sources.yml",
-      "sha256": "223f4894ff7fb168485f267029f92ccd6d8e1f2a78dc1caea8013869b86aa333"
+      "sha256": "17c547fee14d4b11f6eae0a2c918a945101b20c782303825ec79dcb8c87a9212"
     },
     {
       "source": "models/staging/_staging.yml",
