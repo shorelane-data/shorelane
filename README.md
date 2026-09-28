@@ -151,6 +151,15 @@ The warehouse connection runs through Google's
    [releases page](https://github.com/googleapis/mcp-toolbox/releases),
    `chmod +x` it, and put it on your `PATH` as `toolbox`.
 
+   Or use the repo's installer. It pins the version, verifies the checksum, and
+   does nothing if that version is already installed. It is also what a Claude Code
+   cloud environment's setup script should run:
+
+   ```bash
+   bash scripts/install_mcp_toolbox.sh                      # -> /usr/local/bin/toolbox
+   INSTALL_DIR="$HOME/.local/bin" bash scripts/install_mcp_toolbox.sh
+   ```
+
 3. **Authenticate to Google Cloud.** Any Google account works — a personal
    Gmail is fine; you don't need a work account or an invite from us. The
    toolbox uses Application Default Credentials, so log in with:
