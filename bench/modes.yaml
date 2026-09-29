@@ -27,7 +27,7 @@ warehouse:
   project: nodal-shorelane
   dataset: shorelane_bench_v1
   # Recorded by shorelane-dbt's bench-build in shorelane_bench_v1._bench_build.
-  as_of: null
+  as_of: "2026-08-31"
 
 # Given to the agent verbatim in every mode. It names the warehouse and says the
 # working directory may hold files; it never says what they are, so no mode's
@@ -44,7 +44,8 @@ sources:
     # Must equal shorelane_bench_v1._bench_build.dbt_commit: the project the agent
     # reads has to be the one that built the tables it queries. Set after the
     # first bench-build; until then only --allow-unpinned builds work.
-    commit: null
+    # bench-build run 36489401395, 2026-09-28.
+    commit: 2830281dd3b84d4287bc0c7f5411d21e37f7f7a8
     mount: dbt
     include:
       - dbt_project.yml

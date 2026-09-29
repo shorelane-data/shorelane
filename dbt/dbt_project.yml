@@ -15,15 +15,27 @@ clean-targets: ["target", "dbt_packages"]
 query-comment:
   job-label: true
 
+# The `bench` target builds a frozen benchmark dataset (shorelane_bench_<v>) from
+# a frozen raw snapshot (shorelane_raw_bench_<v>). There, every layer is a TABLE:
+# a benchmark dataset must be self-contained, so agents need one read grant and no
+# view can reach back into raw. Descriptions are deliberately NOT persisted to the
+# warehouse (no persist_docs) on any target: in the benchmark, dbt documentation
+# reaches an agent only through the dbt project files its mode mounts.
+on-run-start:
+  - "{{ assert_raw_dataset_matches_target() }}"
+
 models:
   shorelane:
     staging:
-      +materialized: view
+      +materialized: "{{ 'table' if target.name == 'bench' else 'view' }}"
     intermediate:
-      +materialized: view
+      +materialized: "{{ 'table' if target.name == 'bench' else 'view' }}"
     marts:
       +materialized: table
 
 vars:
+  # Dataset the sources read. Daily: shorelane_raw. Bench: shorelane_raw_bench_<v>,
+  # passed with --vars by the bench-build workflow and checked by on-run-start.
+  raw_dataset: "shorelane_raw"
   dataset_version: "shorelane-v4"
   identity_migration_date: "2021-07-01"
