@@ -1,0 +1,158 @@
+# Marketing and merchandising questions. Authored spec: no graded numbers live here.
+domain: marketing
+questions:
+
+  - id: mkt_d2c_cac_h1_2026
+    tier: descriptive
+    trap_tag: definition_outside_schema
+    prompt: What was our d2c customer acquisition cost in the first half of 2026?
+    persona: marketing
+    pinned_scope: {window: {start: 2026-01-01, end: 2026-06-30}}
+    gold:
+      kind: value
+      unit: usd
+      derive: {fn: d2c_cac}
+    gold_sql: |
+      WITH spend AS (
+        SELECT SUM(spend_usd) AS ad_spend
+        FROM `{bench}.fct_marketing_spend`
+        WHERE spend_date BETWEEN '2026-01-01' AND '2026-06-30'
+      ),
+      acquired AS (
+        SELECT COUNT(*) AS new_d2c_customers
+        FROM `{bench}.fct_orders`
+        WHERE channel = 'd2c' AND is_first_order
+          AND order_date BETWEEN '2026-01-01' AND '2026-06-30'
+      )
+      SELECT ROUND(ad_spend / new_d2c_customers, 2) AS value,
+             ROUND(ad_spend, 2) AS ad_spend,
+             new_d2c_customers
+      FROM spend CROSS JOIN acquired
+    trap: >
+      The ad platforms' reported_conversions are self-reported and inflated; CAC on
+      them looks far cheaper than it is. The warehouse-attributed denominator is
+      first-ever d2c orders. fct_marketing_spend repeats that day total on every
+      platform row, so summing it over rows multiplies the denominator by the number
+      of platforms.
+    context_required: [acf:domains/marketing/]
+    split: dev
+    provenance: {source: bi/ad-hoc/09_cac_reported_vs_attributed.sql}
+
+  - id: mkt_new_d2c_customers_q1_2026
+    tier: descriptive
+    trap_tag: fanout_cardinality
+    prompt: How many new d2c customers did paid media bring in during Q1 2026?
+    persona: marketing
+    pinned_scope: {window: {start: 2026-01-01, end: 2026-03-31}}
+    gold:
+      kind: value
+      unit: count
+      derive: {fn: new_d2c_customers}
+    gold_sql: |
+      SELECT COUNT(*) AS value
+      FROM `{bench}.fct_orders`
+      WHERE channel = 'd2c' AND is_first_order
+        AND order_date BETWEEN '2026-01-01' AND '2026-03-31'
+    trap: >
+      The phrasing points at fct_marketing_spend, whose
+      attributed_new_d2c_customers_day_total is the day's total repeated on each
+      platform's row; summing it triple-counts. Platform-reported conversions are
+      inflated. The attributed count is first-ever d2c orders.
+    context_required: [acf:domains/marketing/]
+    split: dev
+    provenance: {source: bi/ad-hoc/09_cac_reported_vs_attributed.sql}
+
+  - id: mkt_ad_spend_by_platform_2025
+    tier: descriptive
+    trap_tag: none
+    prompt: How much did we spend on paid media in 2025, by platform?
+    persona: marketing
+    pinned_scope: {window: {start: 2025-01-01, end: 2025-12-31}}
+    gold:
+      kind: result_set
+      units: {spend_usd: usd}
+      derive: {fn: ad_spend_by_platform}
+    gold_sql: |
+      SELECT platform, ROUND(SUM(spend_usd), 2) AS spend_usd
+      FROM `{bench}.fct_marketing_spend`
+      WHERE spend_date BETWEEN '2025-01-01' AND '2025-12-31'
+      GROUP BY platform
+      ORDER BY platform
+    context_required: []
+    split: dev
+    provenance: {source: context/ground_truth/marketing_dashboard.md}
+
+  - id: mkt_btb15_usage_2024
+    tier: descriptive
+    trap_tag: none
+    prompt: How many orders used the BTB15 promo code in September 2024, and how many discount dollars did it cost us?
+    persona: marketing
+    pinned_scope: {window: {start: 2024-09-01, end: 2024-09-30}}
+    gold:
+      kind: value
+      unit: count
+      derive: {fn: promo_usage, params: {promo_code: BTB15}}
+    gold_sql: |
+      WITH promo AS (
+        SELECT order_id, gross_amount
+        FROM `{bench}.fct_orders`
+        WHERE promo_code = 'BTB15'
+          AND order_date BETWEEN '2024-09-01' AND '2024-09-30'
+      )
+      SELECT
+        (SELECT COUNT(*) FROM promo) AS value,
+        (SELECT ROUND(SUM(quantity * unit_price * discount_pct), 2)
+           FROM `{bench}.fct_order_lines`
+           WHERE order_id IN (SELECT order_id FROM promo)) AS discount_dollars,
+        (SELECT ROUND(SUM(gross_amount), 2) FROM promo) AS promo_gmv
+    context_required: []
+    split: dev
+    provenance: {source: context/ground_truth/events.md}
+
+  - id: mkt_category_margin_2025
+    tier: descriptive
+    trap_tag: none
+    prompt: Which product categories carried our gross margin in 2025? Show line revenue, gross margin and margin % by category.
+    persona: null
+    pinned_scope: {window: {start: 2025-01-01, end: 2025-12-31}}
+    gold:
+      kind: result_set
+      units: {line_revenue: usd, gross_margin: usd, margin_pct: ratio}
+      derive: {fn: category_margin}
+    gold_sql: |
+      SELECT category,
+             ROUND(SUM(line_amount), 2) AS line_revenue,
+             ROUND(SUM(gross_margin), 2) AS gross_margin,
+             ROUND(SUM(gross_margin) / SUM(line_amount), 4) AS margin_pct
+      FROM `{bench}.fct_order_lines`
+      WHERE order_date BETWEEN '2025-01-01' AND '2025-12-31'
+      GROUP BY category
+      ORDER BY category
+    context_required: []
+    split: dev
+    provenance: {source: bi/ad-hoc/07_category_gross_margin_by_year.sql, context_seed: consumer-lines-scope.seed.yaml}
+
+  - id: mkt_paper_order_gmv_2025
+    tier: descriptive
+    trap_tag: fanout_cardinality
+    prompt: What was the total GMV in 2025 of orders that included at least one paper product?
+    persona: null
+    pinned_scope: {window: {start: 2025-01-01, end: 2025-12-31}}
+    gold:
+      kind: value
+      unit: usd
+      derive: {fn: gmv_of_orders_with_category, params: {category: paper}}
+    gold_sql: |
+      SELECT ROUND(SUM(gross_amount), 2) AS value
+      FROM `{bench}.fct_orders`
+      WHERE order_date BETWEEN '2025-01-01' AND '2025-12-31'
+        AND order_id IN (
+          SELECT order_id FROM `{bench}.fct_order_lines` WHERE category = 'paper'
+        )
+    trap: >
+      Joining order lines to orders and summing gross_amount counts an order once per
+      matching line. Summing line_amount answers "paper revenue", not the GMV of
+      orders containing paper.
+    context_required: [dbt:models/marts/_marts.yml]
+    split: dev
+    provenance: {source: authored}

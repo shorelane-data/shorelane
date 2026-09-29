@@ -93,6 +93,23 @@ def _distinctive(value: object) -> str | None:
     return str(int(dec)) if abs(dec) >= MIN_INTEGER_GOLD else None
 
 
+def bank_gold_numbers(bank: dict) -> Iterable[object]:
+    """The graded numbers of a question bank (evals/build_bank.py output): gold
+    values, components, measure columns of result sets, derived evidence and the
+    silent-fail values. Row labels (years, quarters) and scope dates are not
+    graded and would flag every file that mentions a year."""
+    for q in bank.get("questions") or []:
+        gold = q.get("gold") or {}
+        yield gold.get("value")
+        yield from _walk_numbers(gold.get("components") or {})
+        yield from _walk_numbers(gold.get("evidence") or {})
+        yield from _walk_numbers(q.get("silent_fail_values") or {})
+        measured = [i for i, c in enumerate(gold.get("columns") or []) if c in (gold.get("units") or {})]
+        for row in gold.get("rows") or []:
+            for i in measured:
+                yield row[i]
+
+
 def gold_values(repo_root: pathlib.Path = REPO_ROOT) -> set[str]:
     """Every distinctive graded number committed in this repo's evals and ground truth."""
     golds: set[str] = set()
@@ -103,6 +120,11 @@ def gold_values(repo_root: pathlib.Path = REPO_ROOT) -> set[str]:
                 canonical = _distinctive(value)
                 if canonical:
                     golds.add(canonical)
+    for bank in sorted((repo_root / "evals" / "bank").glob("*.yaml")):
+        for value in bank_gold_numbers(yaml.safe_load(bank.read_text())):
+            canonical = _distinctive(value)
+            if canonical:
+                golds.add(canonical)
     for md in sorted((repo_root / "context" / "ground_truth").glob("*.md")):
         for whole, cents in _MONEY.findall(md.read_text()):
             canonical = _distinctive(Decimal(f"{whole.replace(',', '')}.{cents}"))

@@ -1,0 +1,139 @@
+# Diagnostic questions: "why did X move?" Each is graded by a judge against
+# `must` / `must_not` criteria, with the derived evidence (from
+# generators/event_measures.py) as the numbers the judge checks. Each seeded
+# event in config.EVENTS has a known cause in a named table.
+domain: diagnostics
+questions:
+
+  - id: diag_consumer_orders_dip_2023_03
+    tier: diagnostic
+    trap_tag: none
+    prompt: Consumer orders dropped noticeably in March 2023. What happened?
+    persona: operations
+    pinned_scope: {window: {start: 2023-01-01, end: 2023-06-30}}
+    gold:
+      kind: criteria
+      derive:
+        fn: event_evidence
+        params:
+          event: supplier_outage_2023_03
+          keys: [consumer_orders_by_month, paper_share_of_line_revenue_by_month, paper_units_expected_in_window, paper_units_received_in_window]
+      must:
+        - Identifies a paper supply disruption (the paper supplier's shipments stopped or were delayed from early March to early April 2023) as the driver.
+        - Supports it with supplier shipment data (expected vs received paper units, or delayed shipments).
+        - Shows paper's share of consumer line revenue collapsing in March 2023 and recovering afterwards.
+      must_not:
+        - Attributes the dip to seasonality, marketing, or pricing without evidence of the supply disruption.
+    trap: >
+      The dip is visible in orders and revenue, but its cause is only in
+      erp__supplier_shipments. An agent that looks at sales tables alone reaches for
+      seasonality.
+    context_required: []
+    split: dev
+    provenance: {source: context/ground_truth/events.md#supplier_outage_2023_03}
+
+  - id: diag_aov_drop_2024_09
+    tier: diagnostic
+    trap_tag: none
+    prompt: Why did our average consumer order value fall in September 2024 when order volume was so strong?
+    persona: marketing
+    pinned_scope: {window: {start: 2024-07-01, end: 2024-11-30}}
+    gold:
+      kind: criteria
+      derive:
+        fn: event_evidence
+        params:
+          event: promo_back_to_business_2024_09
+          keys: [consumer_orders_by_month, consumer_aov_by_month, promo_orders_by_month, discount_dollars_by_month]
+      must:
+        - Identifies the Back to Business promotion (code BTB15, 15% off, September 2024) as the driver.
+        - Shows that a large share of September consumer orders carried the promo code and that discount dollars spiked.
+        - Explains that the discount lowered order value while the promotion lifted order count.
+      must_not:
+        - Explains the AOV drop by product-mix shift alone without the promotion.
+    trap: >
+      Order count and AOV move in opposite directions. The cause is in
+      app_db__promotions and the orders' promo_code; line-level discount_pct carries
+      the magnitude.
+    context_required: []
+    split: dev
+    provenance: {source: context/ground_truth/events.md#promo_back_to_business_2024_09}
+
+  - id: diag_subscription_starts_dip_2025
+    tier: diagnostic
+    trap_tag: none
+    prompt: New subscription sign-ups slowed down from May 2025 for a few months. What caused it, and did it hurt new ACV?
+    persona: finance
+    pinned_scope: {window: {start: 2025-02-01, end: 2025-09-30}}
+    gold:
+      kind: criteria
+      derive:
+        fn: event_evidence
+        params:
+          event: sub_price_increase_2025_05
+          keys: [gen3_price_per_seat, new_subscription_starts_by_month, new_subscription_acv_per_seat_by_month]
+      must:
+        - Identifies the generation-3 plan price increase effective 2025-05-01 (about +12% per seat) as the driver.
+        - Shows new first-term starts dipping for roughly three months from May 2025.
+        - Notes that ACV per seat on new subscriptions rose, so the dip in count is partly offset in value.
+      must_not:
+        - Claims existing or grandfathered subscribers were repriced.
+    trap: >
+      The cause is a price-table change (app_db__plan_prices), not a sales table.
+      Counting all terms started (renewals included) blurs the dip.
+    context_required: [acf:domains/subscriptions/]
+    split: dev
+    provenance: {source: context/ground_truth/events.md#sub_price_increase_2025_05}
+
+  - id: diag_enterprise_churn_2022_q4
+    tier: diagnostic
+    trap_tag: none
+    prompt: Enterprise churn looks terrible at the end of 2022. How bad was it, and why did it happen?
+    persona: finance
+    pinned_scope: {window: {start: 2022-07-01, end: 2023-01-31}}
+    gold:
+      kind: criteria
+      derive:
+        fn: event_evidence
+        params:
+          event: enterprise_churn_2022_q4
+          keys: [renewal_outcomes, business_billing_tickets_by_month, business_high_priority_billing_tickets_by_month]
+      must:
+        - Quantifies Q4 2022 enterprise renewal churn as far above SMB and above other quarters (terms ending in the quarter, renewed vs churned).
+        - Links it to a spike in billing support tickets from business customers beginning around September 2022 (a billing incident).
+        - Resolves ticket requesters to customers through their source-system identity (Salesforce requester ids), not by joining on raw ids.
+      must_not:
+        - Computes churn with undecided (still-running) terms in the denominator.
+    trap: >
+      The churn is visible in fct_subscriptions, but its cause lives in zendesk
+      tickets keyed by source-native ids, which need identity resolution to connect to
+      subscription customers.
+    context_required: [shorelane:context/guides/customer_identity.md, acf:domains/subscriptions/]
+    split: dev
+    provenance: {source: context/ground_truth/events.md#enterprise_churn_2022_q4, related: bi/ad-hoc/10_billing_tickets_vs_enterprise_churn_2022.sql}
+
+  - id: diag_new_d2c_drop_2026_02
+    tier: diagnostic
+    trap_tag: none
+    prompt: New d2c customer acquisition fell off a cliff in February 2026. What's going on?
+    persona: marketing
+    pinned_scope: {window: {start: 2025-11-01, end: 2026-06-30}}
+    gold:
+      kind: criteria
+      derive:
+        fn: event_evidence
+        params:
+          event: ad_spend_cut_2026_02
+          keys: [ad_spend_by_month, new_d2c_customers_by_month, new_customer_share_of_d2c_orders_by_month]
+      must:
+        - Identifies the paid-media cut (spend fell to roughly a third of run-rate across every platform, February through April 2026) as the driver.
+        - Shows new d2c customers (first-ever orders) falling sharply over the same months and recovering when spend returns.
+        - Measures new customers from orders, not from the platforms' self-reported conversions.
+      must_not:
+        - Attributes the drop to seasonality or pricing without the spend evidence.
+    trap: >
+      The cause is in ads__daily_spend. Platform-reported conversions are inflated and
+      the day totals in fct_marketing_spend repeat per platform row.
+    context_required: [acf:domains/marketing/]
+    split: dev
+    provenance: {source: context/ground_truth/events.md#ad_spend_cut_2026_02}
