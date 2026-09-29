@@ -17,7 +17,7 @@ warehouse to the cent. It is a stand-in for the live check, not a replacement:
 ``tests/check_bench_golds.py --sql bigquery`` runs the same SQL against the real
 dataset.
 
-Needs the ``bank-sql`` extra: ``pip install -e ".[bank-sql]"``.
+Needs ``pip install -r evals/bank/requirements-sql.txt``.
 """
 from __future__ import annotations
 

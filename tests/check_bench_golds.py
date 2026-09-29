@@ -18,7 +18,7 @@ Every gold in the bank has two independent derivations:
        python tests/check_bench_golds.py --sql bigquery
            # the real nodal-shorelane.shorelane_bench_<v> (needs read access)
 
-   The local run needs ``pip install -e ".[bank-sql]"``; the BigQuery run needs
+   The local run needs ``pip install -r evals/bank/requirements-sql.txt``; the BigQuery run needs
    ``google-cloud-bigquery`` and credentials (sa-bench-agent or any account the
    dataset is shared with).
 

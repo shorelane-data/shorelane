@@ -49,7 +49,7 @@ test: # run every contract check (what CI runs)
 bank: # re-derive the benchmark question bank (evals/bank/dev.yaml) from its specs
 	python evals/build_bank.py
 
-bank-sql: # run every gold_sql on a local DuckDB replica of the bench warehouse (DBT=../shorelane-dbt; needs .[bank-sql])
+bank-sql: # run every gold_sql on a local DuckDB replica of the bench warehouse (DBT=../shorelane-dbt; needs evals/bank/requirements-sql.txt)
 	python tests/check_bench_golds.py --sql local --dbt $(or $(DBT),../shorelane-dbt)
 
 bench-check: # build + leakage-scan all three benchmark context modes (DBT=../shorelane-dbt CONTEXT=../shorelane-analytics-context)

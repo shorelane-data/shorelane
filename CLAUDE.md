@@ -315,7 +315,7 @@ make site        # assemble the public Pages site (dashboards) into _site/
 
 make bench-check  # build + leakage-scan the three benchmark context modes
 make bank         # re-derive the benchmark question bank (evals/bank/dev.yaml)
-make bank-sql     # check every gold_sql on a local DuckDB replica (needs .[bank-sql])
+make bank-sql     # check every gold_sql on a local DuckDB replica (needs evals/bank/requirements-sql.txt)
 
 python tests/check_ground_truth.py   # committed figures still derive from the generators
 ```
