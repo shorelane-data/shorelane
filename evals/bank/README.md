@@ -78,20 +78,33 @@ fails if any wrong path returns the gold: a trap that does not bite is noise.
 
 ## Splits and the holdout
 
-This repo is public, so everything in it is **dev**: the migrated questions were
-already public, and ground truth here is web-discoverable. The **holdout** (60%
-of the published bank) lives in the private `shorelane-bench` repo until
-publication, as specs in the same format, reusing `derive.py` (so the derivation
-logic stays public and single-sourced while the questions stay private):
+A question's split is decided by its id, never by its author. `sha256(id)` lands
+in **dev** for the lowest 40% of the hash space and in **holdout** for the rest
+(`assigned_split` in `evals/build_bank.py`), so nobody chooses which questions the
+published score rests on, and anyone can re-check it:
+
+```
+python evals/build_bank.py --which-split rev_q3_2025_gmv    # -> dev or holdout
+```
+
+Choose the id for what the question asks, then look up its split and write the
+spec in that repo. Renaming a question until it lands where you want defeats the
+rule. The build fails if a spec's `split` disagrees with its hash. The 44 questions
+that were public before the rule was adopted are grandfathered as dev
+(`GRANDFATHERED_DEV`); that list never grows.
+
+This repo is public, so it holds **dev** only. The **holdout** lives in the private
+`shorelane-bench` repo until publication, as specs in the same format, reusing
+`derive.py` (so the derivation logic stays public and single-sourced while the
+questions stay private):
 
 ```
 python evals/build_bank.py --specs ../shorelane-bench/bank/specs --split holdout \
     --out ../shorelane-bench/bank/holdout.yaml
 ```
 
-The builder refuses to write a holdout bank inside this repo, and every spec here
-must say `split: dev`. Context authors work from dev only: nobody editing
-shorelane-analytics-context reads the holdout.
+The builder refuses to write a holdout bank inside this repo. Context authors work
+from dev only: nobody editing shorelane-analytics-context reads the holdout.
 
 ## Where the first 44 came from
 
