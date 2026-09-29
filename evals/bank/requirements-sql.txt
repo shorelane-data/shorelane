@@ -1,0 +1,6 @@
+# Extra dependencies for checking the question bank's gold SQL on a local DuckDB
+# replica of the bench warehouse (tests/check_bench_golds.py --sql local).
+# Kept out of pyproject.toml on purpose: that file is part of the tagged package
+# consumers pin, and these tools are not.
+dbt-duckdb>=1.8
+sqlglot>=25
