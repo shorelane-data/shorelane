@@ -68,6 +68,7 @@ def load_raw(db_path: pathlib.Path, as_of: str) -> None:
 def build(work: pathlib.Path, dbt_repo: pathlib.Path, modes_path: pathlib.Path | None = None) -> "LocalWarehouse":
     """Build the replica under `work` and return a handle to query it."""
     commit, as_of, dataset_name = _pinned(modes_path or REPO_ROOT / "bench" / "modes.yaml")
+    work = work.resolve()  # dbt runs from inside the exported project
     work.mkdir(parents=True, exist_ok=True)
     project = work / "dbt"
     db = work / "bench.duckdb"
