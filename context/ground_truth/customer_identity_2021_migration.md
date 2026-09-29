@@ -14,9 +14,10 @@ python -m generators.identity_measures --output context/ground_truth/customer_id
 - **Observed source ID grain:** one visible source customer row keyed by `(source_system, source_customer_id)` across `app_db`, `stripe`, `shopify`, and `salesforce`.
 - **Historical Stripe aliases:** **included**. Both active and inactive visible Stripe customer records enter the observed and resolved alias bridge.
 - **Resolution:** left join observed source IDs to the visible crosswalk on `(source_system, source_customer_id)`. The inner-join count is the retained subset; null rate is unresolved / observed. Snapshot-unresolved IDs can be permanently missing 2021 migration mappings or ordinary source rows whose direct-sync crosswalk has a `linked_at` after the snapshot; the pre-migration Shopify section isolates the planted permanent gap.
-- **Ordered canonical customers:** distinct `app_db__orders.customer_id` among orders visible at the snapshot (all dates through the snapshot).
+- **Real customers only:** business measures (ordered customers, multi-source GMV) exclude orders and customers with `app_db__customers.account_type` in `test` or `internal`, as `fct_revenue` does. The alias-grain identity-quality measures keep every account.
+- **Ordered canonical customers:** distinct `app_db__orders.customer_id` among real customers' orders visible at the snapshot (all dates through the snapshot).
 - **Pre-migration Shopify:** visible Shopify customers with `created_at < 2021-07-01`; resolved and missing refer to crosswalk presence at the snapshot.
-- **GMV window:** inclusive **2024-01-01** through **2024-12-31**. Eligible customers have resolved aliases in at least two distinct source systems at the snapshot; `app_db` counts as a source system alongside `stripe`, `shopify`, and `salesforce`.
+- **GMV window:** inclusive **2024-01-01** through **2024-12-31**. Eligible customers are real customers with resolved aliases in at least two distinct source systems at the snapshot; `app_db` counts as a source system alongside `stripe`, `shopify`, and `salesforce`.
 - **Correct GMV/order grain:** deduplicate eligible `app_db_customer_id` values, then filter orders; each order contributes once. GMV is gross of refunds.
 - **Unsafe fanout grain:** join those same orders to the long resolved alias bridge on app customer ID without deduplicating aliases; each order contributes once per resolved alias, including historical Stripe aliases.
 
@@ -30,7 +31,8 @@ python -m generators.identity_measures --output context/ground_truth/customer_id
 | Unresolved source-ID count | 1,180 |
 | Resolution null rate | 0.016626 |
 | Distinct resolved canonical app IDs | 25,359 |
-| Ordered canonical customer count as of snapshot | 22,628 |
+| Ordered canonical customer count as of snapshot (real customers) | 22,371 |
+| … including test and internal accounts (wrong) | 22,628 |
 
 ## Pre-migration Shopify crosswalk
 
@@ -44,5 +46,6 @@ python -m generators.identity_measures --output context/ground_truth/customer_id
 
 | Path | Canonical customers | Order rows | GMV |
 |---|---:|---:|---:|
-| Correct (deduplicated canonical customer set) | 22,393 | 13,195 | $25,733,431.14 |
-| Unsafe alias-bridge fanout | — | 43,501 | $91,761,496.64 |
+| Correct (deduplicated canonical customer set) | 22,138 | 13,020 | $25,703,938.86 |
+| Unsafe alias-bridge fanout | — | 42,975 | $91,673,125.66 |
+| Test and internal accounts left in (wrong) | — | — | $25,733,431.14 |

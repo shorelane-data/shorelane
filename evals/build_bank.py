@@ -26,6 +26,7 @@ from __future__ import annotations
 
 import argparse
 import difflib
+import hashlib
 import inspect
 import math
 import pathlib
@@ -60,6 +61,69 @@ UNITS = ("usd", "count", "ratio")
 # answer tolerance: the runner compares agent answers at display rounding.
 TOLERANCE = {"usd": 0.005, "count": 0, "ratio": 0.0001}
 ID_RE = re.compile(r"^[a-z][a-z0-9_]*$")
+
+# Split assignment. A question's split is decided by its id, not by its author:
+# sha256(id) lands in dev for the lowest DEV_SHARE of the hash space, holdout for
+# the rest. Nobody chooses which questions the published score rests on, and
+# anyone can re-check the assignment. Pick the id BEFORE hashing it, for what the
+# question asks; re-rolling ids to steer a question into a split defeats the rule.
+DEV_SHARE = 0.40
+# Public before the rule was adopted (2026-09-29), so dev whatever their hash:
+# they cannot be holdout once published. Never add to this list.
+GRANDFATHERED_DEV = frozenset({
+    "cust_current_customers_2025",
+    "cust_multi_channel_2022",
+    "cust_new_customers_q2_2026",
+    "diag_aov_drop_2024_09",
+    "diag_consumer_orders_dip_2023_03",
+    "diag_enterprise_churn_2022_q4",
+    "diag_new_d2c_drop_2026_02",
+    "diag_subscription_starts_dip_2025",
+    "id_customer_count_2025",
+    "id_multi_source_gmv_2024",
+    "id_pre_migration_shopify",
+    "mkt_ad_spend_by_platform_2025",
+    "mkt_btb15_usage_2024",
+    "mkt_category_margin_2025",
+    "mkt_d2c_cac_h1_2026",
+    "mkt_new_d2c_customers_q1_2026",
+    "mkt_paper_order_gmv_2025",
+    "na_email_open_rate_btb",
+    "na_gift_card_revenue_2025",
+    "na_nps_q2_2026",
+    "na_revenue_september_2026",
+    "na_store_visits_2025",
+    "ops_open_tickets_2026_06_30",
+    "ops_shipments_in_transit_2026_06_30",
+    "ops_tickets_by_category_2025",
+    "rev_d2c_gmv_by_year",
+    "rev_five_measures_by_quarter_2025",
+    "rev_fy2025_gmv",
+    "rev_last_quarter",
+    "rev_marketplace_take_q2_2026",
+    "rev_orders_q2_2026",
+    "rev_q1_2024_collected",
+    "rev_q1_2024_marketing_persona",
+    "rev_q1_2024_unqualified",
+    "rev_q2_2026_net",
+    "rev_q4_2025_billed",
+    "rev_recognized_by_channel_2025",
+    "rev_ytd_growth_2026",
+    "sub_active_2025_12_31",
+    "sub_active_by_generation_2025_12_31",
+    "sub_churn_by_segment_2022",
+    "sub_growth_price_paid_2025",
+    "sub_new_subscriptions_2025",
+    "sub_renewal_rate_2025",
+})
+
+
+def assigned_split(qid: str) -> str:
+    """The split the hash rule assigns to a question id."""
+    if qid in GRANDFATHERED_DEV:
+        return "dev"
+    bucket = int(hashlib.sha256(qid.encode()).hexdigest(), 16) / 16 ** 64
+    return "dev" if bucket < DEV_SHARE else "holdout"
 SPEC_KEYS = {
     "id", "tier", "trap_tag", "prompt", "persona", "pinned_scope", "gold", "gold_sql",
     "trap", "context_required", "split", "provenance",
@@ -114,6 +178,9 @@ def validate_spec(q: dict, bench: dict, split: str) -> list[str]:
         errs.append(f"trap_tag {q['trap_tag']!r} not in {TRAP_TAGS}")
     if q["split"] != split:
         errs.append(f"split {q['split']!r} does not match this build ({split!r})")
+    if ID_RE.match(q["id"]) and q["split"] != assigned_split(q["id"]):
+        errs.append(f"the hash rule assigns this id to {assigned_split(q['id'])!r}, not {q['split']!r} "
+                    "(python evals/build_bank.py --which-split <id>)")
     gold = q["gold"]
     kind = gold.get("kind")
     if kind not in GOLD_KINDS:
@@ -375,7 +442,11 @@ def main(argv: list[str] | None = None) -> int:
     ap.add_argument("--split", choices=SPLITS, default="dev")
     ap.add_argument("--out", type=pathlib.Path, default=None)
     ap.add_argument("--check", action="store_true", help="fail if the committed bank is stale or invalid")
+    ap.add_argument("--which-split", metavar="ID", help="print the split the hash rule assigns to a question id")
     args = ap.parse_args(argv)
+    if args.which_split:
+        print(assigned_split(args.which_split))
+        return 0
     out = args.out or BANK_DIR / f"{args.split}.yaml"
     if args.split == "holdout" and out.resolve().is_relative_to(REPO_ROOT):
         print("refusing to write a holdout bank inside the public shorelane repo", file=sys.stderr)

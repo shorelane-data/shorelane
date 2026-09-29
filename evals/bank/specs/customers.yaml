@@ -20,7 +20,7 @@ questions:
         params:
           measure: ordered_canonical_customer_count
           components: [unresolved_source_id_count, resolution_null_rate]
-          silent_fail: [naive_distinct_source_id_count, inner_join_retained_source_id_count, distinct_resolved_canonical_id_count]
+          silent_fail: [naive_distinct_source_id_count, inner_join_retained_source_id_count, distinct_resolved_canonical_id_count, ordered_customer_count_including_test_internal]
     gold_sql: |
       WITH aliases AS (
         SELECT
@@ -29,15 +29,16 @@ questions:
         WHERE source_created_date <= '2025-12-31'
       )
       SELECT
-        (SELECT COUNT(DISTINCT customer_id) FROM `{bench}.stg_orders`
+        (SELECT COUNT(DISTINCT customer_id) FROM `{bench}.fct_orders`
           WHERE order_date <= '2025-12-31') AS value,
         (SELECT COUNTIF(NOT resolved) FROM aliases) AS unresolved_source_id_count,
         (SELECT ROUND(COUNTIF(NOT resolved) / COUNT(*), 6) FROM aliases) AS resolution_null_rate
     trap: >
       Counting raw source IDs answers at alias grain; an inner join to the crosswalk
       silently drops the unresolved aliases; counting every resolved app profile
-      includes profiles that never ordered. The business count is ordered canonical
-      customers, with unresolved identity quality reported separately.
+      includes profiles that never ordered; counting from staging orders keeps test and
+      internal accounts. The business count is ordered real canonical customers, with
+      unresolved identity quality reported separately.
     context_required: [shorelane:context/guides/customer_identity.md, shorelane:context/semantic/customer_identity.view.lkml, acf:domains/customers/]
     split: dev
     provenance: {source: evals/questions.yaml#identity_customer_count_2025, context_seed: source-native-customer-id.seed.yaml}
@@ -94,28 +95,29 @@ questions:
         params:
           measure: correct_multi_source_gmv
           components: [correct_multi_source_order_count, multi_source_canonical_customer_count]
-          silent_fail: [unsafe_fanout_gmv]
+          silent_fail: [unsafe_fanout_gmv, multi_source_gmv_including_test_internal]
     gold_sql: |
       WITH eligible AS (
-        SELECT app_db_customer_id
-        FROM `{bench}.int_customer_identity`
-        WHERE source_created_date <= '2025-12-31'
-          AND app_db_customer_id IS NOT NULL
-          AND linked_date <= '2025-12-31'
-        GROUP BY app_db_customer_id
-        HAVING COUNT(DISTINCT source_system) >= 2
+        SELECT i.app_db_customer_id
+        FROM `{bench}.int_customer_identity` i
+        JOIN `{bench}.stg_app_customers` c ON i.app_db_customer_id = c.app_db_customer_id
+        WHERE i.source_created_date <= '2025-12-31'
+          AND i.linked_date <= '2025-12-31'
+          AND c.account_type = 'customer'
+        GROUP BY i.app_db_customer_id
+        HAVING COUNT(DISTINCT i.source_system) >= 2
       )
       SELECT
         ROUND(SUM(o.gross_amount), 2) AS value,
         COUNT(*) AS correct_multi_source_order_count,
         (SELECT COUNT(*) FROM eligible) AS multi_source_canonical_customer_count
-      FROM `{bench}.stg_orders` o
+      FROM `{bench}.fct_orders` o
       WHERE o.order_date BETWEEN '2024-01-01' AND '2024-12-31'
         AND o.customer_id IN (SELECT app_db_customer_id FROM eligible)
     trap: >
       Joining orders to the resolved identity bridge fans each order out once per
       alias, including historical Stripe aliases. Deduplicate the eligible canonical
-      customers before filtering order facts.
+      customers before filtering order facts, and keep test and internal accounts out.
     context_required: [shorelane:context/guides/customer_identity.md, shorelane:context/semantic/customer_identity.view.lkml, acf:domains/customers/]
     split: dev
     provenance: {source: evals/questions.yaml#identity_multi_source_gmv_2024, context_seed: source-native-customer-id.seed.yaml}

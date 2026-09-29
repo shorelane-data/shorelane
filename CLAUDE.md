@@ -43,9 +43,12 @@ triple. Copy its shape when you add the next piece of debt.
 - **Ground truth is derived, not authored.** Numbers in `context/ground_truth/`
   come from running the generators + `generators/measures.py`. Never type a figure
   by hand. Re-derive after any change and update the file in the same commit.
-- **Breaking changes bump the version.** Changing `SEED`, any economic constant in
-  `config.py`, or a measure definition changes the planted trap. Bump
-  `DATASET_VERSION` and re-derive all ground truth.
+- **Breaking changes bump the version.** Changing `SEED` or any economic constant in
+  `config.py` changes the data: bump `DATASET_VERSION` and re-derive all ground
+  truth. Changing a measure definition with the data unchanged changes the planted
+  trap's gold, not the data: bump the package `version` in `pyproject.toml` (a new
+  tag consumers must re-pin), re-derive all ground truth, and leave
+  `DATASET_VERSION` alone, since the raw snapshots and bench builds stay valid.
 - **dbt must match the reference.** `dbt/models/marts/fct_revenue.sql` must agree
   with `generators/measures.py` for any period. That parity is the contract between
   the warehouse and the eval. If you change one, change the other and confirm.
