@@ -1,0 +1,68 @@
+# Support and supply questions. Authored spec: no graded numbers live here.
+domain: operations
+questions:
+
+  - id: ops_open_tickets_2026_06_30
+    tier: descriptive
+    trap_tag: as_of_temporal
+    prompt: How many support tickets were open at the end of June 2026?
+    persona: operations
+    pinned_scope: {at: 2026-06-30}
+    gold:
+      kind: value
+      unit: count
+      derive: {fn: open_tickets_at}
+    gold_sql: |
+      SELECT COUNT(*) AS value
+      FROM `{bench}.stg_tickets`
+      WHERE created_date <= '2026-06-30'
+        AND (resolved_date IS NULL OR resolved_date > '2026-06-30')
+    trap: >
+      status reflects the snapshot (2026-08-31), not June 30. A ticket solved in July
+      reads 'solved' today but was open at the end of June. Filtering status = 'open'
+      answers "open now"; counting tickets created in June answers "opened".
+    context_required: [dbt:models/staging/_staging.yml]
+    split: dev
+    provenance: {source: authored}
+
+  - id: ops_shipments_in_transit_2026_06_30
+    tier: descriptive
+    trap_tag: as_of_temporal
+    prompt: How many supplier shipments that were due by the end of June 2026 had not arrived by then?
+    persona: operations
+    pinned_scope: {at: 2026-06-30}
+    gold:
+      kind: value
+      unit: count
+      derive: {fn: shipments_in_transit_at}
+    gold_sql: |
+      SELECT COUNT(*) AS value
+      FROM `{bench}.stg_supplier_shipments`
+      WHERE expected_date <= '2026-06-30'
+        AND (received_date IS NULL OR received_date > '2026-06-30')
+    trap: >
+      status = 'in_transit' is the state at the snapshot. The question asks about
+      June 30, so received_date has to be compared with that date.
+    context_required: [dbt:models/staging/_staging.yml]
+    split: dev
+    provenance: {source: authored}
+
+  - id: ops_tickets_by_category_2025
+    tier: descriptive
+    trap_tag: none
+    prompt: How many support tickets did we receive in 2025, by category?
+    persona: operations
+    pinned_scope: {window: {start: 2025-01-01, end: 2025-12-31}}
+    gold:
+      kind: result_set
+      units: {tickets: count}
+      derive: {fn: tickets_by_category}
+    gold_sql: |
+      SELECT category, COUNT(*) AS tickets
+      FROM `{bench}.stg_tickets`
+      WHERE created_date BETWEEN '2025-01-01' AND '2025-12-31'
+      GROUP BY category
+      ORDER BY category
+    context_required: []
+    split: dev
+    provenance: {source: authored}

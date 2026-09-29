@@ -1,0 +1,317 @@
+# Revenue questions. Authored spec: no graded numbers live here (build_bank.py
+# derives them). Field reference: evals/bank/README.md.
+domain: revenue
+questions:
+
+  - id: rev_q1_2024_unqualified
+    tier: descriptive
+    trap_tag: ambiguous_definition
+    prompt: What was our revenue in Q1 2024?
+    persona: null
+    pinned_scope: {window: {start: 2024-01-01, end: 2024-03-31}}
+    gold:
+      kind: value
+      unit: usd
+      measure: recognized_revenue
+      derive: {fn: revenue_measure, params: {measure: recognized_revenue}}
+    gold_sql: |
+      SELECT ROUND(SUM(amount), 2) AS value
+      FROM `{bench}.fct_revenue`
+      WHERE measure_name = 'recognized_revenue'
+        AND activity_date BETWEEN '2024-01-01' AND '2024-03-31'
+    trap: >
+      "Revenue" is ambiguous across five measures. The seductive wrong answer is GMV
+      or net revenue (in-period sales). The unqualified default is recognized revenue,
+      which is higher here because of ratable recognition from subscriptions booked in
+      the Q4 budget flush. Summing the five measures is also wrong.
+    context_required: [shorelane:context/metrics/revenue.yml, shorelane:context/guides/personas.md, acf:domains/executive-revenue/]
+    split: dev
+    provenance: {source: evals/questions.yaml#revenue_q1_2024_unqualified, context_seed: revenue.seed.yaml}
+
+  - id: rev_q1_2024_marketing_persona
+    tier: descriptive
+    trap_tag: ambiguous_definition
+    prompt: Marcus is building the QBR deck. What's our Q1 2024 revenue for the growth chart?
+    persona: marketing
+    pinned_scope: {window: {start: 2024-01-01, end: 2024-03-31}}
+    gold:
+      kind: value
+      unit: usd
+      measure: gmv
+      derive: {fn: revenue_measure, params: {measure: gmv}}
+    gold_sql: |
+      SELECT ROUND(SUM(amount), 2) AS value
+      FROM `{bench}.fct_revenue`
+      WHERE measure_name = 'gmv'
+        AND activity_date BETWEEN '2024-01-01' AND '2024-03-31'
+    trap: >
+      The persona flips the default. Marcus (VP Marketing) means GMV by "revenue", not
+      the CFO's recognized number. Tests whether the agent uses persona context.
+    context_required: [shorelane:context/guides/personas.md, acf:company/org-structure.md]
+    split: dev
+    provenance: {source: evals/questions.yaml#revenue_q1_2024_marketing, context_seed: revenue.seed.yaml}
+
+  - id: rev_q1_2024_collected
+    tier: descriptive
+    trap_tag: ambiguous_definition
+    prompt: How much revenue did we actually collect in Q1 2024?
+    persona: treasury
+    pinned_scope: {window: {start: 2024-01-01, end: 2024-03-31}}
+    gold:
+      kind: value
+      unit: usd
+      measure: collected_cash
+      derive: {fn: revenue_measure, params: {measure: collected_cash}}
+    gold_sql: |
+      SELECT ROUND(SUM(amount), 2) AS value
+      FROM `{bench}.fct_revenue`
+      WHERE measure_name = 'collected_cash'
+        AND activity_date BETWEEN '2024-01-01' AND '2024-03-31'
+    trap: >
+      "Actually collected" points at collected cash, but an agent anchored on a generic
+      revenue definition returns recognized or net revenue.
+    context_required: [shorelane:context/metrics/revenue.yml, acf:domains/executive-revenue/]
+    split: dev
+    provenance: {source: evals/questions.yaml#revenue_q1_2024_cash, context_seed: collected-cash.seed.yaml}
+
+  - id: rev_fy2025_gmv
+    tier: descriptive
+    trap_tag: none
+    prompt: What was GMV for full-year 2025?
+    persona: null
+    pinned_scope: {window: {start: 2025-01-01, end: 2025-12-31}}
+    gold:
+      kind: value
+      unit: usd
+      measure: gmv
+      derive: {fn: revenue_measure_hygiene, params: {measure: gmv}}
+    gold_sql: |
+      SELECT ROUND(SUM(amount), 2) AS value
+      FROM `{bench}.fct_revenue`
+      WHERE measure_name = 'gmv'
+        AND activity_date BETWEEN '2025-01-01' AND '2025-12-31'
+    trap: >
+      Control question: the measure is named. The only wrong path is summing
+      gross_amount over unfiltered staging orders, which includes test and internal
+      accounts.
+    context_required: []
+    split: dev
+    provenance: {source: evals/demo/cases.yaml#gmv_2025_fy}
+
+  - id: rev_q2_2026_net
+    tier: descriptive
+    trap_tag: none
+    prompt: What was net revenue in Q2 2026?
+    persona: null
+    pinned_scope: {window: {start: 2026-04-01, end: 2026-06-30}}
+    gold:
+      kind: value
+      unit: usd
+      measure: net_revenue
+      derive: {fn: revenue_measure, params: {measure: net_revenue}}
+    gold_sql: |
+      SELECT ROUND(SUM(amount), 2) AS value
+      FROM `{bench}.fct_revenue`
+      WHERE measure_name = 'net_revenue'
+        AND activity_date BETWEEN '2026-04-01' AND '2026-06-30'
+    context_required: []
+    split: dev
+    provenance: {source: evals/demo/cases.yaml#net_revenue_2026_q2, context_seed: net-revenue.seed.yaml}
+
+  - id: rev_q4_2025_billed
+    tier: descriptive
+    trap_tag: none
+    prompt: How much did we bill in Q4 2025?
+    persona: null
+    pinned_scope: {window: {start: 2025-10-01, end: 2025-12-31}}
+    gold:
+      kind: value
+      unit: usd
+      measure: billed_revenue
+      derive: {fn: revenue_measure, params: {measure: billed_revenue}}
+    gold_sql: |
+      SELECT ROUND(SUM(amount), 2) AS value
+      FROM `{bench}.fct_revenue`
+      WHERE measure_name = 'billed_revenue'
+        AND activity_date BETWEEN '2025-10-01' AND '2025-12-31'
+    context_required: []
+    split: dev
+    provenance: {source: evals/demo/cases.yaml#billed_revenue_2025_q4, context_seed: billed-revenue.seed.yaml}
+
+  - id: rev_last_quarter
+    tier: descriptive
+    trap_tag: as_of_temporal
+    prompt: What was our revenue last quarter?
+    persona: null
+    pinned_scope: {window: {start: 2026-04-01, end: 2026-06-30}}
+    gold:
+      kind: value
+      unit: usd
+      measure: recognized_revenue
+      derive: {fn: last_full_quarter_revenue, params: {measure: recognized_revenue}}
+    gold_sql: |
+      SELECT ROUND(SUM(amount), 2) AS value
+      FROM `{bench}.fct_revenue`
+      WHERE measure_name = 'recognized_revenue'
+        AND activity_date BETWEEN '2026-04-01' AND '2026-06-30'
+    trap: >
+      "Last quarter" is the most recent fully elapsed calendar quarter relative to the
+      data's as_of (2026-08-31), i.e. Q2 2026. Wrong paths: the current partial quarter
+      (Q3 to date), a trailing 90 days, CURRENT_DATE() instead of the snapshot date,
+      or answering GMV instead of the recognized default.
+    context_required: [shorelane:context/metrics/revenue.yml, acf:domains/executive-revenue/]
+    split: dev
+    provenance: {source: shorelane-analytics-context/evals/seeds/last-quarter.seed.yaml, context_seed: last-quarter.seed.yaml}
+
+  - id: rev_ytd_growth_2026
+    tier: descriptive
+    trap_tag: as_of_temporal
+    prompt: How is revenue growing this year compared with last year?
+    persona: null
+    pinned_scope: {window: {start: 2026-01-01, end: 2026-08-31}}
+    gold:
+      kind: value
+      unit: ratio
+      measure: recognized_revenue_ytd_growth
+      derive: {fn: ytd_growth, params: {measure: recognized_revenue}}
+    gold_sql: |
+      WITH y AS (
+        SELECT
+          SUM(IF(activity_date BETWEEN '2026-01-01' AND '2026-08-31', amount, 0)) AS ytd,
+          SUM(IF(activity_date BETWEEN '2025-01-01' AND '2025-08-31', amount, 0)) AS prior_ytd
+        FROM `{bench}.fct_revenue`
+        WHERE measure_name = 'recognized_revenue'
+      )
+      SELECT ROUND(ytd / prior_ytd - 1, 4) AS value, ROUND(ytd, 2) AS ytd, ROUND(prior_ytd, 2) AS prior_ytd
+      FROM y
+    trap: >
+      This year is only complete through the as_of (2026-08-31). The like-for-like
+      comparison is Jan-Aug 2026 vs Jan-Aug 2025. Comparing the partial year with the
+      full 2025 reports a steep decline that did not happen.
+    context_required: [shorelane:context/metrics/revenue.yml, acf:domains/executive-revenue/]
+    split: dev
+    provenance: {source: shorelane-analytics-context/evals/seeds/revenue-period-completeness.seed.yaml, context_seed: revenue-period-completeness.seed.yaml}
+
+  - id: rev_five_measures_by_quarter_2025
+    tier: descriptive
+    trap_tag: none
+    prompt: Give me all five revenue measures for each quarter of 2025.
+    persona: null
+    pinned_scope: {window: {start: 2025-01-01, end: 2025-12-31}}
+    gold:
+      kind: result_set
+      units: {recognized_revenue: usd, gmv: usd, net_revenue: usd, billed_revenue: usd, collected_cash: usd}
+      derive: {fn: five_revenues_by_quarter}
+    gold_sql: |
+      SELECT
+        CONCAT(CAST(EXTRACT(YEAR FROM activity_date) AS STRING), 'Q',
+               CAST(EXTRACT(QUARTER FROM activity_date) AS STRING)) AS quarter,
+        ROUND(SUM(IF(measure_name = 'recognized_revenue', amount, 0)), 2) AS recognized_revenue,
+        ROUND(SUM(IF(measure_name = 'gmv', amount, 0)), 2) AS gmv,
+        ROUND(SUM(IF(measure_name = 'net_revenue', amount, 0)), 2) AS net_revenue,
+        ROUND(SUM(IF(measure_name = 'billed_revenue', amount, 0)), 2) AS billed_revenue,
+        ROUND(SUM(IF(measure_name = 'collected_cash', amount, 0)), 2) AS collected_cash
+      FROM `{bench}.fct_revenue`
+      WHERE activity_date BETWEEN '2025-01-01' AND '2025-12-31'
+      GROUP BY quarter
+      ORDER BY quarter
+    context_required: []
+    split: dev
+    provenance: {source: bi/ad-hoc/01_five_revenues_by_quarter.sql}
+
+  - id: rev_orders_q2_2026
+    tier: descriptive
+    trap_tag: definition_outside_schema
+    prompt: How many orders did we have in Q2 2026?
+    persona: null
+    pinned_scope: {window: {start: 2026-04-01, end: 2026-06-30}}
+    gold:
+      kind: value
+      unit: count
+      derive: {fn: orders_count}
+    gold_sql: |
+      SELECT COUNT(*) AS value
+      FROM `{bench}.fct_orders`
+      WHERE order_date BETWEEN '2026-04-01' AND '2026-06-30'
+    trap: >
+      Test and internal accounts place orders. Nothing in the order table marks them;
+      the rule (account_type = 'customer') is a business definition. Counting staging
+      orders includes them.
+    context_required: [shorelane:context/metrics/revenue.yml, acf:domains/executive-revenue/]
+    split: dev
+    provenance: {source: shorelane-analytics-context/evals/seeds/eligible-order.seed.yaml, context_seed: eligible-order.seed.yaml}
+
+  - id: rev_marketplace_take_q2_2026
+    tier: descriptive
+    trap_tag: definition_outside_schema
+    prompt: How much commission did we earn on marketplace orders placed in Q2 2026, before refunds?
+    persona: null
+    pinned_scope: {window: {start: 2026-04-01, end: 2026-06-30}}
+    gold:
+      kind: value
+      unit: usd
+      derive: {fn: marketplace_take}
+    gold_sql: |
+      SELECT ROUND(SUM(net_amount), 2) AS value,
+             ROUND(SUM(net_amount) / SUM(gross_amount), 4) AS effective_take_rate
+      FROM `{bench}.fct_orders`
+      WHERE channel = 'marketplace'
+        AND order_date BETWEEN '2026-04-01' AND '2026-06-30'
+    trap: >
+      Marketplace earnings are Shorelane's take (net_amount). gross_amount is the
+      seller's retail price, i.e. marketplace GMV; reporting it as earnings overstates
+      them several times over.
+    context_required: [shorelane:context/metrics/revenue.yml, acf:domains/executive-revenue/]
+    split: dev
+    provenance: {source: bi/ad-hoc/02_marketplace_take_rate_by_month.sql, context_seed: marketplace-earnings.seed.yaml}
+
+  - id: rev_d2c_gmv_by_year
+    tier: descriptive
+    trap_tag: definition_outside_schema
+    prompt: Show d2c GMV by year from 2019 through 2025.
+    persona: null
+    pinned_scope: {window: {start: 2019-01-01, end: 2025-12-31}}
+    gold:
+      kind: result_set
+      units: {d2c_gmv: usd}
+      derive: {fn: d2c_gmv_by_year}
+    gold_sql: |
+      SELECT EXTRACT(YEAR FROM order_date) AS year, ROUND(SUM(gross_amount), 2) AS d2c_gmv
+      FROM `{bench}.fct_orders`
+      WHERE channel = 'd2c'
+        AND order_date BETWEEN '2019-01-01' AND '2025-12-31'
+      GROUP BY year
+      ORDER BY year
+    trap: >
+      The d2c channel was labelled 'direct' until 2022-06-01 and the rename was never
+      backfilled. Filtering the raw label (stg_orders.channel or fct_orders.channel_raw)
+      makes d2c look like it launched in mid-2022.
+    context_required: [shorelane:context/metrics/revenue.yml, acf:domains/executive-revenue/]
+    split: dev
+    provenance: {source: bi/ad-hoc/03_d2c_by_year_raw_label_vs_canonical.sql, context_seed: canonical-channel.seed.yaml}
+
+  - id: rev_recognized_by_channel_2025
+    tier: descriptive
+    trap_tag: definition_outside_schema
+    prompt: Break down 2025 recognized revenue by channel.
+    persona: finance
+    pinned_scope: {window: {start: 2025-01-01, end: 2025-12-31}}
+    gold:
+      kind: result_set
+      units: {recognized_revenue: usd}
+      derive: {fn: recognized_by_channel}
+    gold_sql: |
+      SELECT o.channel, ROUND(SUM(r.amount), 2) AS recognized_revenue
+      FROM `{bench}.stg_revenue_recognition` r
+      JOIN `{bench}.fct_orders` o ON r.order_id = o.order_id
+      WHERE r.recognition_date BETWEEN '2025-01-01' AND '2025-12-31'
+      GROUP BY o.channel
+      ORDER BY o.channel
+    trap: >
+      fct_revenue has no channel. The split must join recognition rows to eligible
+      orders and date them by recognition_date. Splitting fct_orders.net_amount by
+      order date answers a different measure; joining to unfiltered staging orders
+      (as the executive dashboard's channel chart does) keeps test/internal accounts.
+    context_required: [shorelane:context/metrics/revenue.yml, acf:domains/executive-revenue/]
+    split: dev
+    provenance: {source: shorelane-analytics-context/evals/seeds/revenue-channel-reconciliation.seed.yaml, context_seed: revenue-channel-reconciliation.seed.yaml}

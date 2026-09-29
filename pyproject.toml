@@ -24,6 +24,9 @@ snowflake = ["snowflake-connector-python[pandas]>=3.0"]
 bi = ["plotly>=5.0", "dash>=2.14"]
 dbt = ["dbt-bigquery>=1.7"]
 dbt-redshift = ["dbt-redshift>=1.7"]
+# Checks the question bank's gold SQL on a local DuckDB replica of the bench
+# warehouse (tests/check_bench_golds.py --sql local).
+bank-sql = ["dbt-duckdb>=1.8", "sqlglot>=25"]
 
 [tool.setuptools]
 py-modules = ["config"]

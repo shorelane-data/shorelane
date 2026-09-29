@@ -153,9 +153,10 @@ all seeded, all documented in `raw_schema/`:
   undercounts). Still unbuilt: OfficeMax acquisition, the three-ad-totals context.
 
 Every committed figure is derived: `make ground-truth` re-renders all of
-`context/ground_truth/`, `evals/questions.yaml`, `evals/demo/cases.yaml`, and the
-table-stability manifest; `make test` guards them. Breaking the data is a
-deliberate ritual: bump `DATASET_VERSION`, run `make ground-truth`, commit together.
+`context/ground_truth/`, `evals/questions.yaml`, `evals/demo/cases.yaml`, the
+benchmark bank `evals/bank/dev.yaml`, and the table-stability manifest; `make test`
+guards them. Breaking the data is a deliberate ritual: bump `DATASET_VERSION`, run
+`make ground-truth`, commit together.
 
 ## How to extend — the debt catalog roadmap
 
@@ -259,6 +260,13 @@ Rules that keep the ablation honest. Do not weaken them:
   YAML and ACF files.
 - **Sources are pinned.** The dbt commit in `modes.yaml` must equal
   `_bench_build.dbt_commit`.
+- **One question bank, two derivations.** Questions are authored as specs in
+  `evals/bank/specs/` (no numbers); `evals/build_bank.py` derives every gold from
+  the generators at the bench as_of, and `tests/check_bench_golds.py --sql`
+  re-derives it from each question's `gold_sql` (local DuckDB replica or the real
+  bench dataset). Only the **dev** split lives here; the holdout stays in the
+  private `shorelane-bench` repo until publication, and context authors never
+  read it. See `evals/bank/README.md`.
 
 ## Public demo surface
 
@@ -306,6 +314,8 @@ make dbt         # staging + marts (needs ~/.dbt/profiles.yml)
 make site        # assemble the public Pages site (dashboards) into _site/
 
 make bench-check  # build + leakage-scan the three benchmark context modes
+make bank         # re-derive the benchmark question bank (evals/bank/dev.yaml)
+make bank-sql     # check every gold_sql on a local DuckDB replica (needs .[bank-sql])
 
 python tests/check_ground_truth.py   # committed figures still derive from the generators
 ```
@@ -336,10 +346,13 @@ context/                  THE NODAL LAYER
   semantic/               LookML as context artifact (authored, not rendered)
   guides/                 personas + source-of-truth rules
   ground_truth/           derived answers, keyed to evals
-evals/                    questions.yaml + rubrics/
+evals/                    questions.yaml + rubrics/; build_bank.py
+  bank/                   benchmark question bank: specs/ (authored), derive.py,
+                          dev.yaml (derived), local_warehouse.py (see its README)
 bench/                    agent-benchmark context modes: modes.yaml, workspace.py,
                           leakage.py (see bench/README.md)
 tests/check_ground_truth.py  guards context/ground_truth/ against RNG drift
+tests/check_bench_golds.py   guards the question bank (generators; --sql for gold SQL)
 loaders/                  bigquery_load.py (primary), redshift_load.py (second),
                           visibility.py (arrival rule, warehouse-neutral),
                           snowflake_load.py (stub)

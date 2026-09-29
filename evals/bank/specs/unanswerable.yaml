@@ -1,0 +1,85 @@
+# Unanswerable questions: the warehouse cannot answer them, and the correct
+# response says so (and why) instead of producing a number. `absent_terms` are
+# checked against every raw column and table name by build_bank.py: if one ever
+# appears, the question may have become answerable and the build fails.
+domain: unanswerable
+questions:
+
+  - id: na_gift_card_revenue_2025
+    tier: unanswerable
+    trap_tag: unanswerable
+    prompt: How much gift card revenue did we recognize in 2025?
+    persona: finance
+    pinned_scope: {window: {start: 2025-01-01, end: 2025-12-31}}
+    gold:
+      kind: refusal
+      reason: Shorelane's data has no gift cards (no product, tender, or ledger for them).
+      absent_terms: [gift, voucher, tender]
+    trap: >
+      A plausible-wrong answer filters product names or promo codes for anything
+      gift-like, or reports total recognized revenue.
+    split: dev
+    provenance: {source: authored}
+
+  - id: na_nps_q2_2026
+    tier: unanswerable
+    trap_tag: unanswerable
+    prompt: What was our NPS in Q2 2026?
+    persona: null
+    pinned_scope: {window: {start: 2026-04-01, end: 2026-06-30}}
+    gold:
+      kind: refusal
+      reason: No survey or satisfaction score is collected; support tickets are not a satisfaction measure.
+      absent_terms: [nps, survey, csat, satisfaction, score]
+    trap: >
+      A plausible-wrong answer invents a proxy from ticket volume or resolution time
+      and reports it as NPS.
+    split: dev
+    provenance: {source: authored}
+
+  - id: na_store_visits_2025
+    tier: unanswerable
+    trap_tag: unanswerable
+    prompt: How many store visits did we get in December 2025?
+    persona: null
+    pinned_scope: {window: {start: 2025-12-01, end: 2025-12-31}}
+    gold:
+      kind: refusal
+      reason: Shorelane has no physical stores and no visit or footfall data; ad clicks and impressions are not visits.
+      absent_terms: [visit, footfall, store, session, pageview]
+    trap: >
+      A plausible-wrong answer reports ad clicks or order counts as visits.
+    split: dev
+    provenance: {source: authored}
+
+  - id: na_revenue_september_2026
+    tier: unanswerable
+    trap_tag: unanswerable
+    prompt: What was our revenue in September 2026?
+    persona: null
+    pinned_scope: {}
+    gold:
+      kind: refusal
+      reason: The data runs through 2026-08-31; September 2026 has not been loaded. A forecast is not what was asked.
+    trap: >
+      The warehouse holds nothing after the as_of, so a revenue query for September
+      returns an empty sum. Wrong paths: reporting it as zero revenue, or silently
+      substituting a forecast or the latest complete month.
+    split: dev
+    provenance: {source: authored}
+
+  - id: na_email_open_rate_btb
+    tier: unanswerable
+    trap_tag: unanswerable
+    prompt: What was the email open rate on the Back to Business campaign?
+    persona: marketing
+    pinned_scope: {window: {start: 2024-09-01, end: 2024-09-30}}
+    gold:
+      kind: refusal
+      reason: No email or CRM engagement data is loaded; promotions record codes and discounts only.
+      absent_terms: [email, open_rate, opens, sends]
+    trap: >
+      A plausible-wrong answer reports promo redemption rate or ad click-through rate
+      as the open rate.
+    split: dev
+    provenance: {source: authored}
