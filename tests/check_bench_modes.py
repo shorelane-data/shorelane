@@ -201,7 +201,7 @@ class ModesTest(unittest.TestCase):
 class GoldValuesTest(unittest.TestCase):
     def test_gold_values_cover_the_eval_answers(self):
         golds = leakage.gold_values()
-        for value in ("4932192.31", "4757319.70", "22628", "25733431.14", "91761496.64"):
+        for value in ("4932192.31", "4757319.70", "22371", "22628", "25703938.86", "91673125.66"):
             self.assertIn(value, golds)
 
     def test_number_normalization(self):

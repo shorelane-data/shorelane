@@ -74,6 +74,7 @@ def main() -> int:
                 measures["naive_distinct_source_id_count"],
                 measures["inner_join_retained_source_id_count"],
                 measures["distinct_resolved_canonical_id_count"],
+                measures["unfiltered_ordered_canonical_customer_count"],
             ],
             "pinned_scope": {"as_of": measures["as_of"]},
         },

@@ -16,6 +16,12 @@ summary: >
 
 canonical_default: current_customers
 canonical_grain: app_db__orders.customer_id == dim_customers.app_db_customer_id
+exclusion_rule: >
+  Every customer measure counts real customers only:
+  dim_customers.account_type = 'customer'. Test and internal accounts place
+  real-looking orders and are present, unfiltered, in raw and staging; count
+  them and every figure here is inflated. Same predicate as fct_revenue,
+  fct_orders and generators/measures.py.
 
 measures:
   current_customers:

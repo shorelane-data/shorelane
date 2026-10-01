@@ -87,8 +87,17 @@ def derive_identity_measures(
     unresolved_count = observed_count - resolved_count
     resolved_aliases = resolved.loc[resolved_mask].copy()
 
-    orders = visible["app_db__orders"]
+    # Only real customers count (account_type = 'customer', debt item #6). The
+    # unfiltered count is kept as a silent-fail value: it is the plausible answer
+    # from an agent that resolves identity correctly but skips the exclusion.
+    all_orders = visible["app_db__orders"]
+    customers = tables["app_db__customers"]
+    real_customers = customers.loc[
+        customers["account_type"] == "customer", "app_db_customer_id"
+    ]
+    orders = all_orders.loc[all_orders["customer_id"].isin(real_customers)]
     ordered_canonical_count = int(orders["customer_id"].nunique())
+    unfiltered_ordered_count = int(all_orders["customer_id"].nunique())
 
     migration = pd.Timestamp(config.IDENTITY_MIGRATION_DATE)
     pre_shopify = resolved.loc[
@@ -102,6 +111,7 @@ def derive_identity_measures(
         "source_system"
     ].nunique()
     eligible_customers = systems_per_customer[systems_per_customer >= 2].index
+    eligible_customers = eligible_customers[eligible_customers.isin(real_customers)]
 
     in_gmv_window = (orders["order_date"] >= pd.Timestamp(gmv_start)) & (
         orders["order_date"] <= pd.Timestamp(gmv_end)
@@ -139,6 +149,7 @@ def derive_identity_measures(
             resolved_aliases["app_db_customer_id"].nunique()
         ),
         "ordered_canonical_customer_count": ordered_canonical_count,
+        "unfiltered_ordered_canonical_customer_count": unfiltered_ordered_count,
         "pre_migration_shopify_observed_count": pre_shopify_observed,
         "pre_migration_shopify_resolved_count": pre_shopify_resolved,
         "pre_migration_shopify_missing_count": pre_shopify_observed
@@ -169,9 +180,9 @@ python -m generators.identity_measures --output context/ground_truth/customer_id
 - **Observed source ID grain:** one visible source customer row keyed by `(source_system, source_customer_id)` across `app_db`, `stripe`, `shopify`, and `salesforce`.
 - **Historical Stripe aliases:** **included**. Both active and inactive visible Stripe customer records enter the observed and resolved alias bridge.
 - **Resolution:** left join observed source IDs to the visible crosswalk on `(source_system, source_customer_id)`. The inner-join count is the retained subset; null rate is unresolved / observed. Snapshot-unresolved IDs can be permanently missing 2021 migration mappings or ordinary source rows whose direct-sync crosswalk has a `linked_at` after the snapshot; the pre-migration Shopify section isolates the planted permanent gap.
-- **Ordered canonical customers:** distinct `app_db__orders.customer_id` among orders visible at the snapshot (all dates through the snapshot).
+- **Ordered canonical customers:** distinct `app_db__orders.customer_id` among orders visible at the snapshot (all dates through the snapshot), restricted to real customers (`app_db__customers.account_type = 'customer'`); test and internal accounts are excluded, as in `fct_orders`. The unfiltered count is reported separately as the plausible-wrong value.
 - **Pre-migration Shopify:** visible Shopify customers with `created_at < {measures['identity_migration_date']}`; resolved and missing refer to crosswalk presence at the snapshot.
-- **GMV window:** inclusive **{measures['gmv_start']}** through **{measures['gmv_end']}**. Eligible customers have resolved aliases in at least two distinct source systems at the snapshot; `app_db` counts as a source system alongside `stripe`, `shopify`, and `salesforce`.
+- **GMV window:** inclusive **{measures['gmv_start']}** through **{measures['gmv_end']}**. Eligible customers are real customers (test and internal accounts excluded) with resolved aliases in at least two distinct source systems at the snapshot; `app_db` counts as a source system alongside `stripe`, `shopify`, and `salesforce`.
 - **Correct GMV/order grain:** deduplicate eligible `app_db_customer_id` values, then filter orders; each order contributes once. GMV is gross of refunds.
 - **Unsafe fanout grain:** join those same orders to the long resolved alias bridge on app customer ID without deduplicating aliases; each order contributes once per resolved alias, including historical Stripe aliases.
 
@@ -186,6 +197,7 @@ python -m generators.identity_measures --output context/ground_truth/customer_id
 | Resolution null rate | {measures['resolution_null_rate']:.6f} |
 | Distinct resolved canonical app IDs | {measures['distinct_resolved_canonical_id_count']:,} |
 | Ordered canonical customer count as of snapshot | {measures['ordered_canonical_customer_count']:,} |
+| Ordered canonical customers incl. test/internal accounts (plausible-wrong) | {measures['unfiltered_ordered_canonical_customer_count']:,} |
 
 ## Pre-migration Shopify crosswalk
 

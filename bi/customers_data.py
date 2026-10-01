@@ -7,6 +7,10 @@ against. Counts are at the CANONICAL customer grain (app_db__orders.customer_id
 == dim_customers.app_db_customer_id) — never at source-alias grain, which is the
 identity-fragmentation trap (see context/guides/customer_identity.md).
 
+Every count is restricted to real customers: orders from test and internal
+accounts (app_db__customers.account_type != 'customer', debt item #6) are
+excluded, exactly as generators/measures.py and the dbt marts exclude them.
+
 Definitions (the human-confirmed context; see context/metrics/customers.yml):
 
   current customer     d2c / marketplace: placed >=1 order in the trailing 12
@@ -39,6 +43,7 @@ import pandas as pd
 
 import config
 from bi import dashboard_data as dd
+from generators.measures import eligible_order_ids
 from loaders.visibility import visible_tables
 
 # Trailing window for "current" — deliberately the subscription term, so the
@@ -62,7 +67,9 @@ STATUS_LABELS = {
 
 
 def _orders_with_month(tables: dict[str, pd.DataFrame]) -> pd.DataFrame:
-    o = tables["app_db__orders"].copy()
+    """Orders from real customers only (test/internal accounts excluded)."""
+    o = tables["app_db__orders"]
+    o = o[o.order_id.isin(eligible_order_ids(tables))].copy()
     o["month"] = o.order_date.dt.to_period("M").dt.to_timestamp()
     return o
 
@@ -207,7 +214,7 @@ def identity_quality(tables: dict[str, pd.DataFrame]) -> dict:
             by_system[status] = 0
     by_system = by_system[list(STATUS_LABELS)]
 
-    orders = tables["app_db__orders"]
+    orders = _orders_with_month(tables)
     ordered_ids = pd.Index(orders.customer_id.unique())
     ra = resolved[resolved.app_db_customer_id.notna()]
     ids_per_customer = ra.groupby("app_db_customer_id").size()

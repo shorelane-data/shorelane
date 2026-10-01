@@ -57,7 +57,7 @@ questions:
     ground_truth: context/ground_truth/customer_identity_2021_migration.md
     canonical_answer:
       measure: ordered_canonical_customer_count
-      value: 22628
+      value: 22371
       unresolved_source_id_count: 1180
       resolution_null_rate: 0.016626
     context_required:
@@ -67,9 +67,10 @@ questions:
     trap: >
       Counting raw IDs answers at alias grain (70,975), while an inner join silently
       retains only 69,795 aliases. Counting all resolved app profiles returns 25,359,
-      including profiles with no orders. The business customer count is the 22,628
-      ordered canonical customers, with unresolved quality reported separately.
-    silent_fail_values: [70975, 69795, 25359]
+      including profiles with no orders. Counting every ordering app ID returns 22,628,
+      including test and internal accounts. The business customer count is the 22,371
+      ordered real canonical customers, with unresolved quality reported separately.
+    silent_fail_values: [70975, 69795, 25359, 22628]
 
   - id: identity_pre_migration_shopify
     prompt: >
@@ -102,9 +103,9 @@ questions:
     ground_truth: context/ground_truth/customer_identity_2021_migration.md
     canonical_answer:
       measure: correct_multi_source_gmv
-      value: 25733431.14
-      order_count: 13195
-      eligible_canonical_customer_count: 22393
+      value: 25703938.86
+      order_count: 13020
+      eligible_canonical_customer_count: 22138
     context_required:
       - context/guides/customer_identity.md
       - context/semantic/customer_identity.view.lkml
@@ -115,6 +116,6 @@ questions:
     trap: >
       Joining orders directly to the long resolved identity bridge fans each order
       out once per alias, including historical Stripe aliases, and produces the
-      plausible but wrong $91,761,496.64 across 43,501 rows. Deduplicate the eligible
+      plausible but wrong $91,673,125.66 across 42,975 rows. Deduplicate the eligible
       canonical customer set before filtering order facts.
-    silent_fail_values: [91761496.64]
+    silent_fail_values: [91673125.66]
