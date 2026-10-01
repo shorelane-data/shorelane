@@ -16,6 +16,7 @@ import pandas as pd
 
 import config
 from generators import dataset
+from generators.measures import eligible_order_ids
 from loaders.visibility import visible_tables
 
 AS_OF = "2025-12-31"
@@ -28,6 +29,10 @@ _SOURCE_TABLES = (
     ("shopify", "shopify__customers", "shopify_customer_id"),
     ("salesforce", "salesforce__customers", "salesforce_customer_id"),
 )
+
+
+def _in_window(orders: pd.DataFrame, start: str, end: str) -> pd.Series:
+    return (orders["order_date"] >= pd.Timestamp(start)) & (orders["order_date"] <= pd.Timestamp(end))
 
 
 def _observed_aliases(tables: Mapping[str, pd.DataFrame]) -> pd.DataFrame:
@@ -87,6 +92,7 @@ def derive_identity_measures(
     unresolved_count = observed_count - resolved_count
     resolved_aliases = resolved.loc[resolved_mask].copy()
 
+<<<<<<< HEAD
     # Only real customers count (account_type = 'customer', debt item #6). The
     # unfiltered count is kept as a silent-fail value: it is the plausible answer
     # from an agent that resolves identity correctly but skips the exclusion.
@@ -96,6 +102,13 @@ def derive_identity_measures(
         customers["account_type"] == "customer", "app_db_customer_id"
     ]
     orders = all_orders.loc[all_orders["customer_id"].isin(real_customers)]
+=======
+    # Business measures count real customers only: orders from test and internal
+    # accounts are excluded, exactly as in measures.py and fct_revenue. The
+    # alias-grain identity-quality measures above keep every account.
+    all_orders = visible["app_db__orders"]
+    orders = all_orders.loc[all_orders["order_id"].isin(eligible_order_ids(visible))]
+>>>>>>> main
     ordered_canonical_count = int(orders["customer_id"].nunique())
     unfiltered_ordered_count = int(all_orders["customer_id"].nunique())
 
@@ -110,16 +123,24 @@ def derive_identity_measures(
     systems_per_customer = resolved_aliases.groupby("app_db_customer_id")[
         "source_system"
     ].nunique()
+<<<<<<< HEAD
     eligible_customers = systems_per_customer[systems_per_customer >= 2].index
     eligible_customers = eligible_customers[eligible_customers.isin(real_customers)]
+=======
+    customers = visible["app_db__customers"]
+    real = set(customers.loc[customers["account_type"] == "customer", "app_db_customer_id"])
+    multi_source = systems_per_customer[systems_per_customer >= 2].index
+    eligible_customers = multi_source[multi_source.isin(real)]
+>>>>>>> main
 
-    in_gmv_window = (orders["order_date"] >= pd.Timestamp(gmv_start)) & (
-        orders["order_date"] <= pd.Timestamp(gmv_end)
-    )
+    in_gmv_window = _in_window(orders, gmv_start, gmv_end)
     eligible_orders = orders.loc[
         in_gmv_window & orders["customer_id"].isin(eligible_customers)
     ]
     correct_order_count = int(len(eligible_orders))
+    unfiltered_eligible_orders = all_orders.loc[
+        _in_window(all_orders, gmv_start, gmv_end) & all_orders["customer_id"].isin(multi_source)
+    ]
     correct_gmv = round(float(eligible_orders["gross_amount"].sum()), 2)
 
     # Deliberately unsafe: each order is repeated once per resolved alias belonging
@@ -159,6 +180,12 @@ def derive_identity_measures(
         "correct_multi_source_gmv": correct_gmv,
         "unsafe_fanout_order_row_count": int(len(unsafe)),
         "unsafe_fanout_gmv": round(float(unsafe["gross_amount"].sum()), 2),
+        # The same business measures with test and internal accounts left in:
+        # the silent-fail values for the account-hygiene leg of the trap.
+        "ordered_customer_count_including_test_internal": int(all_orders["customer_id"].nunique()),
+        "multi_source_gmv_including_test_internal": round(
+            float(unfiltered_eligible_orders["gross_amount"].sum()), 2
+        ),
     }
 
 
@@ -180,9 +207,16 @@ python -m generators.identity_measures --output context/ground_truth/customer_id
 - **Observed source ID grain:** one visible source customer row keyed by `(source_system, source_customer_id)` across `app_db`, `stripe`, `shopify`, and `salesforce`.
 - **Historical Stripe aliases:** **included**. Both active and inactive visible Stripe customer records enter the observed and resolved alias bridge.
 - **Resolution:** left join observed source IDs to the visible crosswalk on `(source_system, source_customer_id)`. The inner-join count is the retained subset; null rate is unresolved / observed. Snapshot-unresolved IDs can be permanently missing 2021 migration mappings or ordinary source rows whose direct-sync crosswalk has a `linked_at` after the snapshot; the pre-migration Shopify section isolates the planted permanent gap.
+<<<<<<< HEAD
 - **Ordered canonical customers:** distinct `app_db__orders.customer_id` among orders visible at the snapshot (all dates through the snapshot), restricted to real customers (`app_db__customers.account_type = 'customer'`); test and internal accounts are excluded, as in `fct_orders`. The unfiltered count is reported separately as the plausible-wrong value.
 - **Pre-migration Shopify:** visible Shopify customers with `created_at < {measures['identity_migration_date']}`; resolved and missing refer to crosswalk presence at the snapshot.
 - **GMV window:** inclusive **{measures['gmv_start']}** through **{measures['gmv_end']}**. Eligible customers are real customers (test and internal accounts excluded) with resolved aliases in at least two distinct source systems at the snapshot; `app_db` counts as a source system alongside `stripe`, `shopify`, and `salesforce`.
+=======
+- **Real customers only:** business measures (ordered customers, multi-source GMV) exclude orders and customers with `app_db__customers.account_type` in `test` or `internal`, as `fct_revenue` does. The alias-grain identity-quality measures keep every account.
+- **Ordered canonical customers:** distinct `app_db__orders.customer_id` among real customers' orders visible at the snapshot (all dates through the snapshot).
+- **Pre-migration Shopify:** visible Shopify customers with `created_at < {measures['identity_migration_date']}`; resolved and missing refer to crosswalk presence at the snapshot.
+- **GMV window:** inclusive **{measures['gmv_start']}** through **{measures['gmv_end']}**. Eligible customers are real customers with resolved aliases in at least two distinct source systems at the snapshot; `app_db` counts as a source system alongside `stripe`, `shopify`, and `salesforce`.
+>>>>>>> main
 - **Correct GMV/order grain:** deduplicate eligible `app_db_customer_id` values, then filter orders; each order contributes once. GMV is gross of refunds.
 - **Unsafe fanout grain:** join those same orders to the long resolved alias bridge on app customer ID without deduplicating aliases; each order contributes once per resolved alias, including historical Stripe aliases.
 
@@ -196,8 +230,13 @@ python -m generators.identity_measures --output context/ground_truth/customer_id
 | Unresolved source-ID count | {measures['unresolved_source_id_count']:,} |
 | Resolution null rate | {measures['resolution_null_rate']:.6f} |
 | Distinct resolved canonical app IDs | {measures['distinct_resolved_canonical_id_count']:,} |
+<<<<<<< HEAD
 | Ordered canonical customer count as of snapshot | {measures['ordered_canonical_customer_count']:,} |
 | Ordered canonical customers incl. test/internal accounts (plausible-wrong) | {measures['unfiltered_ordered_canonical_customer_count']:,} |
+=======
+| Ordered canonical customer count as of snapshot (real customers) | {measures['ordered_canonical_customer_count']:,} |
+| … including test and internal accounts (wrong) | {measures['ordered_customer_count_including_test_internal']:,} |
+>>>>>>> main
 
 ## Pre-migration Shopify crosswalk
 
@@ -213,6 +252,7 @@ python -m generators.identity_measures --output context/ground_truth/customer_id
 |---|---:|---:|---:|
 | Correct (deduplicated canonical customer set) | {measures['multi_source_canonical_customer_count']:,} | {measures['correct_multi_source_order_count']:,} | ${measures['correct_multi_source_gmv']:,.2f} |
 | Unsafe alias-bridge fanout | — | {measures['unsafe_fanout_order_row_count']:,} | ${measures['unsafe_fanout_gmv']:,.2f} |
+| Test and internal accounts left in (wrong) | — | — | ${measures['multi_source_gmv_including_test_internal']:,.2f} |
 """
 
 

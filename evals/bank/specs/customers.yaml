@@ -1,0 +1,200 @@
+# Customer and identity questions. Authored spec: no graded numbers live here.
+domain: customers
+questions:
+
+  - id: id_customer_count_2025
+    tier: descriptive
+    trap_tag: fanout_cardinality
+    prompt: >
+      How many customers did we have at the end of 2025 across Stripe, Salesforce,
+      Shopify, and the app? Give me the canonical business customer count, and also
+      report unresolved source IDs and the resolution null rate.
+    persona: operations
+    pinned_scope: {question_as_of: 2025-12-31}
+    gold:
+      kind: value
+      unit: count
+      measure: ordered_canonical_customer_count
+      derive:
+        fn: identity
+        params:
+          measure: ordered_canonical_customer_count
+          components: [unresolved_source_id_count, resolution_null_rate]
+          silent_fail: [naive_distinct_source_id_count, inner_join_retained_source_id_count, distinct_resolved_canonical_id_count, ordered_customer_count_including_test_internal]
+    gold_sql: |
+      WITH aliases AS (
+        SELECT
+          (app_db_customer_id IS NOT NULL AND linked_date <= '2025-12-31') AS resolved
+        FROM `{bench}.int_customer_identity`
+        WHERE source_created_date <= '2025-12-31'
+      )
+      SELECT
+        (SELECT COUNT(DISTINCT customer_id) FROM `{bench}.fct_orders`
+          WHERE order_date <= '2025-12-31') AS value,
+        (SELECT COUNTIF(NOT resolved) FROM aliases) AS unresolved_source_id_count,
+        (SELECT ROUND(COUNTIF(NOT resolved) / COUNT(*), 6) FROM aliases) AS resolution_null_rate
+    trap: >
+      Counting raw source IDs answers at alias grain; an inner join to the crosswalk
+      silently drops the unresolved aliases; counting every resolved app profile
+      includes profiles that never ordered; counting from staging orders keeps test and
+      internal accounts. The business count is ordered real canonical customers, with
+      unresolved identity quality reported separately.
+    context_required: [shorelane:context/guides/customer_identity.md, shorelane:context/semantic/customer_identity.view.lkml, acf:domains/customers/]
+    split: dev
+    provenance: {source: evals/questions.yaml#identity_customer_count_2025, context_seed: source-native-customer-id.seed.yaml}
+
+  - id: id_pre_migration_shopify
+    tier: descriptive
+    trap_tag: definition_outside_schema
+    prompt: >
+      Of the pre-migration Shopify customer IDs created before the 2021 identity
+      migration, how many are tied to an app customer as of the end of 2025, and how
+      many are missing?
+    persona: data_platform
+    pinned_scope: {question_as_of: 2025-12-31}
+    gold:
+      kind: value
+      unit: count
+      measure: pre_migration_shopify_resolved_count
+      derive:
+        fn: identity
+        params:
+          measure: pre_migration_shopify_resolved_count
+          components: [pre_migration_shopify_missing_count]
+          silent_fail: [pre_migration_shopify_observed_count]
+    gold_sql: |
+      SELECT
+        COUNTIF(app_db_customer_id IS NOT NULL AND linked_date <= '2025-12-31') AS value,
+        COUNTIF(app_db_customer_id IS NULL OR linked_date > '2025-12-31') AS pre_migration_shopify_missing_count
+      FROM `{bench}.int_customer_identity`
+      WHERE source_system = 'shopify'
+        AND source_created_date < '2021-07-01'
+    trap: >
+      The 2021 identity migration left a crosswalk gap: some pre-migration Shopify
+      aliases were never linked. Returning every observed pre-migration alias ignores
+      the gap; returning only the missing ones reverses the question.
+    context_required: [shorelane:context/guides/customer_identity.md, acf:domains/customers/]
+    split: dev
+    provenance: {source: evals/questions.yaml#identity_pre_migration_shopify}
+
+  - id: id_multi_source_gmv_2024
+    tier: descriptive
+    trap_tag: fanout_cardinality
+    prompt: >
+      What was 2024 GMV from customers we could resolve in at least two distinct
+      source systems as of 2025-12-31? Include the order count and eligible canonical
+      customer count.
+    persona: finance
+    pinned_scope: {question_as_of: 2025-12-31, window: {start: 2024-01-01, end: 2024-12-31}}
+    gold:
+      kind: value
+      unit: usd
+      measure: correct_multi_source_gmv
+      derive:
+        fn: identity
+        params:
+          measure: correct_multi_source_gmv
+          components: [correct_multi_source_order_count, multi_source_canonical_customer_count]
+          silent_fail: [unsafe_fanout_gmv, multi_source_gmv_including_test_internal]
+    gold_sql: |
+      WITH eligible AS (
+        SELECT i.app_db_customer_id
+        FROM `{bench}.int_customer_identity` i
+        JOIN `{bench}.stg_app_customers` c ON i.app_db_customer_id = c.app_db_customer_id
+        WHERE i.source_created_date <= '2025-12-31'
+          AND i.linked_date <= '2025-12-31'
+          AND c.account_type = 'customer'
+        GROUP BY i.app_db_customer_id
+        HAVING COUNT(DISTINCT i.source_system) >= 2
+      )
+      SELECT
+        ROUND(SUM(o.gross_amount), 2) AS value,
+        COUNT(*) AS correct_multi_source_order_count,
+        (SELECT COUNT(*) FROM eligible) AS multi_source_canonical_customer_count
+      FROM `{bench}.fct_orders` o
+      WHERE o.order_date BETWEEN '2024-01-01' AND '2024-12-31'
+        AND o.customer_id IN (SELECT app_db_customer_id FROM eligible)
+    trap: >
+      Joining orders to the resolved identity bridge fans each order out once per
+      alias, including historical Stripe aliases. Deduplicate the eligible canonical
+      customers before filtering order facts, and keep test and internal accounts out.
+    context_required: [shorelane:context/guides/customer_identity.md, shorelane:context/semantic/customer_identity.view.lkml, acf:domains/customers/]
+    split: dev
+    provenance: {source: evals/questions.yaml#identity_multi_source_gmv_2024, context_seed: source-native-customer-id.seed.yaml}
+
+  - id: cust_current_customers_2025
+    tier: descriptive
+    trap_tag: definition_outside_schema
+    prompt: How many current customers did we have at the end of 2025?
+    persona: null
+    pinned_scope: {window: {start: 2025-01-01, end: 2025-12-31}}
+    gold:
+      kind: value
+      unit: count
+      derive: {fn: current_customers}
+    gold_sql: |
+      SELECT COUNT(DISTINCT customer_id) AS value
+      FROM `{bench}.fct_orders`
+      WHERE order_date BETWEEN '2025-01-01' AND '2025-12-31'
+    trap: >
+      "Current customer" is a business rule the schema does not carry: a real
+      canonical customer with at least one order in the trailing twelve full calendar
+      months. Wrong paths: counting every profile ever created, summing the
+      per-channel counts (customers overlap), or keeping test and internal accounts
+      (the customers dashboard does).
+    context_required: [shorelane:context/metrics/customers.yml, acf:domains/customers/]
+    split: dev
+    provenance: {source: context/ground_truth/customers_dashboard.md, context_seed: current-customers.seed.yaml}
+
+  - id: cust_new_customers_q2_2026
+    tier: descriptive
+    trap_tag: definition_outside_schema
+    prompt: How many new customers did we acquire in Q2 2026?
+    persona: null
+    pinned_scope: {window: {start: 2026-04-01, end: 2026-06-30}}
+    gold:
+      kind: value
+      unit: count
+      derive: {fn: new_customers}
+    gold_sql: |
+      SELECT COUNT(*) AS value
+      FROM (
+        SELECT customer_id, MIN(order_date) AS first_order_date
+        FROM `{bench}.fct_orders`
+        GROUP BY customer_id
+      )
+      WHERE first_order_date BETWEEN '2026-04-01' AND '2026-06-30'
+    trap: >
+      A new customer is one whose first-ever order (any channel) falls in the period.
+      Counting app profiles created in the period counts sign-ups that never ordered;
+      counting first orders per channel counts existing customers trying a new
+      channel.
+    context_required: [shorelane:context/metrics/customers.yml, acf:domains/customers/]
+    split: dev
+    provenance: {source: shorelane-analytics-context/evals/seeds/new-customers.seed.yaml, context_seed: new-customers.seed.yaml}
+
+  - id: cust_multi_channel_2022
+    tier: descriptive
+    trap_tag: definition_outside_schema
+    prompt: How many customers bought through more than one channel in 2022?
+    persona: null
+    pinned_scope: {window: {start: 2022-01-01, end: 2022-12-31}}
+    gold:
+      kind: value
+      unit: count
+      derive: {fn: multi_channel_customers}
+    gold_sql: |
+      SELECT COUNT(*) AS value
+      FROM (
+        SELECT customer_id
+        FROM `{bench}.fct_orders`
+        WHERE order_date BETWEEN '2022-01-01' AND '2022-12-31'
+        GROUP BY customer_id
+        HAVING COUNT(DISTINCT channel) >= 2
+      )
+    trap: >
+      2022 straddles the direct-to-d2c rename (2022-06-01). On raw labels a consumer
+      who ordered before and after the rename looks like a two-channel customer.
+    context_required: [shorelane:context/metrics/customers.yml, shorelane:context/metrics/revenue.yml, acf:domains/customers/]
+    split: dev
+    provenance: {source: shorelane-analytics-context/evals/seeds/multi-channel-customers.seed.yaml, context_seed: multi-channel-customers.seed.yaml}

@@ -3,8 +3,8 @@ Reference implementation of the FIVE REVENUES, in pandas.
 
 This is the canonical definition. The dbt mart (dbt/models/marts/fct_revenue.sql)
 must agree with this for any period; the eval harness derives ground truth from it.
-If you change a definition here, you change the planted trap — bump DATASET_VERSION
-and re-derive ground truth.
+If you change a definition here, you change the planted trap — bump the package
+version and re-derive ground truth (see "Breaking changes" in CLAUDE.md).
 
 v4: every measure EXCLUDES orders placed by non-'customer' accounts
 (app_db__customers.account_type in ('test', 'internal') — debt item #6). Raw and

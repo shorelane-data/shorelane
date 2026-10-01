@@ -93,10 +93,18 @@ questions:
     trap: >
       Counting raw IDs answers at alias grain ({naive:,}), while an inner join silently
       retains only {inner:,} aliases. Counting all resolved app profiles returns {profiles:,},
+<<<<<<< HEAD
       including profiles with no orders. Counting every ordering app ID returns {unfiltered:,},
       including test and internal accounts. The business customer count is the {ordered:,}
       ordered real canonical customers, with unresolved quality reported separately.
     silent_fail_values: [{naive}, {inner}, {profiles}, {unfiltered}]
+=======
+      including profiles with no orders, and counting every ordering account returns
+      {ordered_all:,}, including test and internal accounts. The business customer count
+      is the {ordered:,} ordered real canonical customers, with unresolved quality reported
+      separately.
+    silent_fail_values: [{naive}, {inner}, {profiles}, {ordered_all}]
+>>>>>>> main
 
   - id: identity_pre_migration_shopify
     prompt: >
@@ -143,8 +151,9 @@ questions:
       Joining orders directly to the long resolved identity bridge fans each order
       out once per alias, including historical Stripe aliases, and produces the
       plausible but wrong ${fan_gmv:,.2f} across {fan_rows:,} rows. Deduplicate the eligible
-      canonical customer set before filtering order facts.
-    silent_fail_values: [{fan_gmv}]
+      canonical customer set before filtering order facts, and keep test and internal
+      accounts out (leaving them in gives ${ms_gmv_all:,.2f}).
+    silent_fail_values: [{fan_gmv}, {ms_gmv_all}]
 """
 
 
@@ -164,6 +173,7 @@ def main() -> int:
         naive=idm["naive_distinct_source_id_count"],
         inner=idm["inner_join_retained_source_id_count"],
         profiles=idm["distinct_resolved_canonical_id_count"],
+        ordered_all=idm["ordered_customer_count_including_test_internal"],
         as_of=idm["as_of"], migration=idm["identity_migration_date"],
         shp_resolved=idm["pre_migration_shopify_resolved_count"],
         shp_missing=idm["pre_migration_shopify_missing_count"],
@@ -172,6 +182,7 @@ def main() -> int:
         ms_customers=idm["multi_source_canonical_customer_count"],
         gmv_start=idm["gmv_start"], gmv_end=idm["gmv_end"],
         fan_gmv=idm["unsafe_fanout_gmv"], fan_rows=idm["unsafe_fanout_order_row_count"],
+        ms_gmv_all=idm["multi_source_gmv_including_test_internal"],
     )
     OUT.write_text(text)
     print(f"wrote {OUT.relative_to(REPO_ROOT)} ({config.DATASET_VERSION})")

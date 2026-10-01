@@ -67,9 +67,16 @@ questions:
     trap: >
       Counting raw IDs answers at alias grain (70,975), while an inner join silently
       retains only 69,795 aliases. Counting all resolved app profiles returns 25,359,
+<<<<<<< HEAD
       including profiles with no orders. Counting every ordering app ID returns 22,628,
       including test and internal accounts. The business customer count is the 22,371
       ordered real canonical customers, with unresolved quality reported separately.
+=======
+      including profiles with no orders, and counting every ordering account returns
+      22,628, including test and internal accounts. The business customer count
+      is the 22,371 ordered real canonical customers, with unresolved quality reported
+      separately.
+>>>>>>> main
     silent_fail_values: [70975, 69795, 25359, 22628]
 
   - id: identity_pre_migration_shopify
@@ -117,5 +124,11 @@ questions:
       Joining orders directly to the long resolved identity bridge fans each order
       out once per alias, including historical Stripe aliases, and produces the
       plausible but wrong $91,673,125.66 across 42,975 rows. Deduplicate the eligible
+<<<<<<< HEAD
       canonical customer set before filtering order facts.
     silent_fail_values: [91673125.66]
+=======
+      canonical customer set before filtering order facts, and keep test and internal
+      accounts out (leaving them in gives $25,733,431.14).
+    silent_fail_values: [91673125.66, 25733431.14]
+>>>>>>> main

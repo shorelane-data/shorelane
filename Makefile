@@ -1,6 +1,6 @@
 # Shorelane build pipeline. `make help` for targets.
 
-.PHONY: help install install-bq install-redshift generate verify ground-truth test bench-check load-bq load-redshift dbt manifest manifest-fetch site biz-dashboard validate-dashboard clean
+.PHONY: help install install-bq install-redshift generate verify ground-truth test bank bank-sql bench-check load-bq load-redshift dbt manifest manifest-fetch site biz-dashboard validate-dashboard clean
 
 help:
 	@grep -E '^[a-zA-Z_-]+:.*?# .*$$' $(MAKEFILE_LIST) | sort | \
@@ -32,6 +32,7 @@ ground-truth: # re-derive EVERY committed ground-truth artifact from the generat
 	python evals/refresh_questions.py
 	python evals/generate_demo_cases.py --org-id $${SHORELANE_ORG_ID:-SHORELANE_ORG_ID}
 	python tests/check_table_stability.py --update
+	python evals/build_bank.py
 
 test: # run every contract check (what CI runs)
 	python tests/check_table_stability.py
@@ -43,6 +44,13 @@ test: # run every contract check (what CI runs)
 	python tests/check_event_ground_truth.py
 	python tests/check_dbt_mirror.py
 	python tests/check_bench_modes.py
+	python tests/check_bench_golds.py
+
+bank: # re-derive the benchmark question bank (evals/bank/dev.yaml) from its specs
+	python evals/build_bank.py
+
+bank-sql: # run every gold_sql on a local DuckDB replica of the bench warehouse (DBT=../shorelane-dbt; needs evals/bank/requirements-sql.txt)
+	python tests/check_bench_golds.py --sql local --dbt $(or $(DBT),../shorelane-dbt)
 
 bench-check: # build + leakage-scan all three benchmark context modes (DBT=../shorelane-dbt CONTEXT=../shorelane-analytics-context)
 	python -m bench.workspace check --dbt $(or $(DBT),../shorelane-dbt) \

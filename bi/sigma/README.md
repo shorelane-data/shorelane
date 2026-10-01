@@ -88,7 +88,7 @@ KPI row from `customers_kpis`:
 - Returning Share · `returning_share` · percent
 - Multi-Channel · `multi_channel_customers` · integer
 
-Charts from `customers_monthly`:
+Charts from `customers_monthly` (first tab):
 
 - Current Customers by Month — line(s): `current_customers` (and per-channel series)
 - Current Customer Mix (at window end) — donut over `current_d2c`,
@@ -97,7 +97,7 @@ Charts from `customers_monthly`:
 - Active Customers by Month & Channel — stacked bar of the three `active_*` series
 - New vs Returning Customers — stacked bar of `new_customers` and `returning_customers`
 
-Identity health (no Period control; reads the warehouse's current load state):
+Identity health - second tab (no Period control; reads the warehouse's current load state):
 
 - Tiles from `identity_health`: Source Aliases, Resolution Null Rate (percent),
   Canonical Profiles, Ever-Ordered Customers, Avg IDs / Customer,

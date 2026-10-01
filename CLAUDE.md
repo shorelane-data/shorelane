@@ -43,9 +43,12 @@ triple. Copy its shape when you add the next piece of debt.
 - **Ground truth is derived, not authored.** Numbers in `context/ground_truth/`
   come from running the generators + `generators/measures.py`. Never type a figure
   by hand. Re-derive after any change and update the file in the same commit.
-- **Breaking changes bump the version.** Changing `SEED`, any economic constant in
-  `config.py`, or a measure definition changes the planted trap. Bump
-  `DATASET_VERSION` and re-derive all ground truth.
+- **Breaking changes bump the version.** Changing `SEED` or any economic constant in
+  `config.py` changes the data: bump `DATASET_VERSION` and re-derive all ground
+  truth. Changing a measure definition with the data unchanged changes the planted
+  trap's gold, not the data: bump the package `version` in `pyproject.toml` (a new
+  tag consumers must re-pin), re-derive all ground truth, and leave
+  `DATASET_VERSION` alone, since the raw snapshots and bench builds stay valid.
 - **dbt must match the reference.** `dbt/models/marts/fct_revenue.sql` must agree
   with `generators/measures.py` for any period. That parity is the contract between
   the warehouse and the eval. If you change one, change the other and confirm.
@@ -153,9 +156,10 @@ all seeded, all documented in `raw_schema/`:
   undercounts). Still unbuilt: OfficeMax acquisition, the three-ad-totals context.
 
 Every committed figure is derived: `make ground-truth` re-renders all of
-`context/ground_truth/`, `evals/questions.yaml`, `evals/demo/cases.yaml`, and the
-table-stability manifest; `make test` guards them. Breaking the data is a
-deliberate ritual: bump `DATASET_VERSION`, run `make ground-truth`, commit together.
+`context/ground_truth/`, `evals/questions.yaml`, `evals/demo/cases.yaml`, the
+benchmark bank `evals/bank/dev.yaml`, and the table-stability manifest; `make test`
+guards them. Breaking the data is a deliberate ritual: bump `DATASET_VERSION`, run
+`make ground-truth`, commit together.
 
 ## How to extend — the debt catalog roadmap
 
@@ -259,6 +263,13 @@ Rules that keep the ablation honest. Do not weaken them:
   YAML and ACF files.
 - **Sources are pinned.** The dbt commit in `modes.yaml` must equal
   `_bench_build.dbt_commit`.
+- **One question bank, two derivations.** Questions are authored as specs in
+  `evals/bank/specs/` (no numbers); `evals/build_bank.py` derives every gold from
+  the generators at the bench as_of, and `tests/check_bench_golds.py --sql`
+  re-derives it from each question's `gold_sql` (local DuckDB replica or the real
+  bench dataset). Only the **dev** split lives here; the holdout stays in the
+  private `shorelane-bench` repo until publication, and context authors never
+  read it. See `evals/bank/README.md`.
 
 ## Public demo surface
 
@@ -306,6 +317,8 @@ make dbt         # staging + marts (needs ~/.dbt/profiles.yml)
 make site        # assemble the public Pages site (dashboards) into _site/
 
 make bench-check  # build + leakage-scan the three benchmark context modes
+make bank         # re-derive the benchmark question bank (evals/bank/dev.yaml)
+make bank-sql     # check every gold_sql on a local DuckDB replica (needs evals/bank/requirements-sql.txt)
 
 python tests/check_ground_truth.py   # committed figures still derive from the generators
 ```
@@ -336,10 +349,13 @@ context/                  THE NODAL LAYER
   semantic/               LookML as context artifact (authored, not rendered)
   guides/                 personas + source-of-truth rules
   ground_truth/           derived answers, keyed to evals
-evals/                    questions.yaml + rubrics/
+evals/                    questions.yaml + rubrics/; build_bank.py
+  bank/                   benchmark question bank: specs/ (authored), derive.py,
+                          dev.yaml (derived), local_warehouse.py (see its README)
 bench/                    agent-benchmark context modes: modes.yaml, workspace.py,
                           leakage.py (see bench/README.md)
 tests/check_ground_truth.py  guards context/ground_truth/ against RNG drift
+tests/check_bench_golds.py   guards the question bank (generators; --sql for gold SQL)
 loaders/                  bigquery_load.py (primary), redshift_load.py (second),
                           visibility.py (arrival rule, warehouse-neutral),
                           snowflake_load.py (stub)

@@ -1,0 +1,149 @@
+# Subscription questions. Authored spec: no graded numbers live here.
+domain: subscriptions
+questions:
+
+  - id: sub_active_2025_12_31
+    tier: descriptive
+    trap_tag: definition_outside_schema
+    prompt: How many active subscribers did we have at the end of 2025?
+    persona: null
+    pinned_scope: {at: 2025-12-31}
+    gold:
+      kind: value
+      unit: count
+      derive: {fn: active_subscribers}
+    gold_sql: |
+      SELECT COUNT(DISTINCT customer_id) AS value
+      FROM `{bench}.fct_subscriptions`
+      WHERE DATE '2025-12-31' BETWEEN term_start_date AND term_end_date
+    trap: >
+      Active at D means a term containing D, counted at customer grain. status =
+      'active' only marks terms still undecided at the snapshot, so it answers "today"
+      not 2025-12-31; filtering to is_current plans drops every grandfathered
+      generation; seats and terms are different units.
+    context_required: [shorelane:context/metrics/customers.yml, acf:domains/subscriptions/]
+    split: dev
+    provenance: {source: context/ground_truth/subscriptions_dashboard.md, context_seed: active-subscribers.seed.yaml}
+
+  - id: sub_active_by_generation_2025_12_31
+    tier: descriptive
+    trap_tag: definition_outside_schema
+    prompt: How many active subscribers and how much ACV under contract did we have on each plan generation at the end of 2025?
+    persona: finance
+    pinned_scope: {at: 2025-12-31}
+    gold:
+      kind: result_set
+      units: {active_subscribers: count, acv_under_contract: usd}
+      derive: {fn: active_subscribers_by_generation}
+    gold_sql: |
+      SELECT plan_generation,
+             COUNT(DISTINCT customer_id) AS active_subscribers,
+             ROUND(SUM(acv), 2) AS acv_under_contract
+      FROM `{bench}.fct_subscriptions`
+      WHERE DATE '2025-12-31' BETWEEN term_start_date AND term_end_date
+      GROUP BY plan_generation
+      ORDER BY plan_generation
+    trap: >
+      Retired (grandfathered) generations still carry live subscribers. Filtering to
+      is_current plans reports only generation 3.
+    context_required: [acf:domains/subscriptions/]
+    split: dev
+    provenance: {source: bi/ad-hoc/05_active_subscribers_by_plan_generation.sql, context_seed: grandfathered-plans.seed.yaml}
+
+  - id: sub_renewal_rate_2025
+    tier: descriptive
+    trap_tag: definition_outside_schema
+    prompt: What was our subscription renewal rate in 2025?
+    persona: null
+    pinned_scope: {window: {start: 2025-01-01, end: 2025-12-31}}
+    gold:
+      kind: value
+      unit: ratio
+      derive: {fn: renewal_rate}
+    gold_sql: |
+      SELECT ROUND(COUNTIF(status = 'renewed') / COUNT(*), 4) AS value,
+             COUNT(*) AS terms_decided,
+             COUNTIF(status = 'churned') AS churned_terms
+      FROM `{bench}.fct_subscriptions`
+      WHERE term_end_date BETWEEN '2025-01-01' AND '2025-12-31'
+        AND status IN ('renewed', 'churned')
+    trap: >
+      Renewal rate is renewed / (renewed + churned) over terms that ENDED in the
+      period, counted in terms. An ACV-weighted rate is dollar retention, a different
+      metric; renewals as a share of terms started answers "how much of our booking
+      volume is renewals".
+    context_required: [acf:domains/subscriptions/]
+    split: dev
+    provenance: {source: context/ground_truth/subscriptions_dashboard.md, context_seed: renewal-rate.seed.yaml}
+
+  - id: sub_new_subscriptions_2025
+    tier: descriptive
+    trap_tag: definition_outside_schema
+    prompt: How many new subscriptions did we sign in 2025?
+    persona: null
+    pinned_scope: {window: {start: 2025-01-01, end: 2025-12-31}}
+    gold:
+      kind: value
+      unit: count
+      derive: {fn: new_subscriptions}
+    gold_sql: |
+      SELECT COUNTIF(is_first_term) AS value,
+             ROUND(SUM(IF(is_first_term, acv, 0)), 2) AS new_acv
+      FROM `{bench}.fct_subscriptions`
+      WHERE term_start_date BETWEEN '2025-01-01' AND '2025-12-31'
+    trap: >
+      Every renewal is a new term row. New subscriptions are first terms only;
+      counting all terms started includes renewals.
+    context_required: [acf:domains/subscriptions/]
+    split: dev
+    provenance: {source: context/ground_truth/subscriptions_dashboard.md, context_seed: subscription-starts.seed.yaml}
+
+  - id: sub_churn_by_segment_2022
+    tier: descriptive
+    trap_tag: none
+    prompt: Show renewal churn by customer segment for each quarter of 2022, based on when the term ended.
+    persona: null
+    pinned_scope: {window: {start: 2022-01-01, end: 2022-12-31}}
+    gold:
+      kind: result_set
+      units: {terms_up_for_renewal: count, churned: count, churn_rate: ratio}
+      derive: {fn: churn_by_segment_quarter}
+    gold_sql: |
+      SELECT
+        CONCAT(CAST(EXTRACT(YEAR FROM term_end_date) AS STRING), 'Q',
+               CAST(EXTRACT(QUARTER FROM term_end_date) AS STRING)) AS quarter,
+        segment,
+        COUNT(*) AS terms_up_for_renewal,
+        COUNTIF(status = 'churned') AS churned,
+        ROUND(COUNTIF(status = 'churned') / COUNT(*), 4) AS churn_rate
+      FROM `{bench}.fct_subscriptions`
+      WHERE status IN ('renewed', 'churned')
+        AND term_end_date BETWEEN '2022-01-01' AND '2022-12-31'
+      GROUP BY quarter, segment
+      ORDER BY quarter, segment
+    context_required: []
+    split: dev
+    provenance: {source: bi/ad-hoc/06_renewal_churn_by_segment_and_quarter.sql}
+
+  - id: sub_growth_price_paid_2025
+    tier: descriptive
+    trap_tag: definition_outside_schema
+    prompt: What do Growth plan customers pay per seat per year, on average, across the terms active at the end of 2025?
+    persona: finance
+    pinned_scope: {at: 2025-12-31}
+    gold:
+      kind: value
+      unit: usd
+      derive: {fn: avg_price_per_seat_active, params: {plan_id: growth}}
+    gold_sql: |
+      SELECT ROUND(SUM(acv) / SUM(seats), 2) AS value
+      FROM `{bench}.fct_subscriptions`
+      WHERE plan_id = 'growth'
+        AND DATE '2025-12-31' BETWEEN term_start_date AND term_end_date
+    trap: >
+      A term keeps the price in effect when it started. The May 2025 gen-3 increase
+      applies only to terms starting after it, so the catalog's current price
+      (dim_plans) overstates what the active base pays.
+    context_required: [acf:domains/subscriptions/]
+    split: dev
+    provenance: {source: context/ground_truth/events.md, context_seed: grandfathered-plans.seed.yaml}

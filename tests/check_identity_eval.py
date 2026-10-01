@@ -74,7 +74,11 @@ def main() -> int:
                 measures["naive_distinct_source_id_count"],
                 measures["inner_join_retained_source_id_count"],
                 measures["distinct_resolved_canonical_id_count"],
+<<<<<<< HEAD
                 measures["unfiltered_ordered_canonical_customer_count"],
+=======
+                measures["ordered_customer_count_including_test_internal"],
+>>>>>>> main
             ],
             "pinned_scope": {"as_of": measures["as_of"]},
         },
@@ -103,6 +107,7 @@ def main() -> int:
             },
             "silent_fail_values": [
                 measures["unsafe_fanout_gmv"],
+                measures["multi_source_gmv_including_test_internal"],
             ],
             "pinned_scope": {
                 "gmv_start": measures["gmv_start"],

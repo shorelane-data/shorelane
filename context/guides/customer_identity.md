@@ -7,11 +7,19 @@ business-customer grain.
 ## Safe model contract
 
 - `dim_customers` has **one row per canonical app ID** (`app_db_customer_id`). For a
+<<<<<<< HEAD
   business customer count, query this dimension and filter `has_order = true`
   **and** `account_type = 'customer'`. Profiles with no orders are resolvable app
   profiles, not ordered customers; `has_order` is computed from unfiltered staging
   orders, so test and internal accounts carry `has_order = true` and must be
   excluded by `account_type`.
+=======
+  business customer count, query this dimension and filter `has_order = true` and
+  `account_type = 'customer'`. Profiles with no orders are resolvable app profiles,
+  not ordered customers, and test and internal accounts are never business
+  customers (the same exclusion `fct_revenue` applies). Customer sets used to filter
+  order facts, such as multi-source customers, apply the same exclusion.
+>>>>>>> main
 - `int_customer_identity` has **one row per source alias**. Its unique,
   source-qualified key is `(source_system, source_customer_id)`. It has a nullable app_db_customer_id;
   raw ID text is not a cross-system key.
