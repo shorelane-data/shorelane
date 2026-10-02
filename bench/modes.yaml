@@ -61,7 +61,11 @@ sources:
 
   context:
     repo: https://github.com/shorelane-data/shorelane-analytics-context.git
-    commit: 14d4aab6cd0905bb6d5563a0975d43903a8fa03a
+    # The context under test, frozen. 6298880 is main after the customers,
+    # marketing and subscriptions interviews (analytics-context #6-#8), the first
+    # pin with all four domains filled in. Holdout questions are written only
+    # after this pin; any later context edit is a new pin, never a silent change.
+    commit: 6298880a39f2426174e07cabd7ef567c7efe213c
     mount: context
     include:
       - company/**
