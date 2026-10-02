@@ -20,32 +20,20 @@ view: dim_customers {
   dimension: has_order {
     type: yesno
     sql: ${TABLE}.has_order ;;
-<<<<<<< HEAD
-    description: "Filter has_order = true AND account_type = customer for the canonical business customer count."
-=======
     description: "Filter has_order = true and account_type = 'customer' for the canonical business customer count."
->>>>>>> main
   }
 
   dimension: account_type {
     type: string
     sql: ${TABLE}.account_type ;;
-<<<<<<< HEAD
-    description: "customer, test, or internal. Only 'customer' counts toward any business metric."
-=======
     description: "customer, test or internal. Only 'customer' accounts are business customers; test and internal accounts are excluded from every business measure, as in fct_revenue."
->>>>>>> main
   }
 
   measure: ordered_canonical_customers {
     type: count_distinct
     sql: ${app_db_customer_id} ;;
     filters: [has_order: "yes", account_type: "customer"]
-<<<<<<< HEAD
     description: "Real (non-test, non-internal) canonical app customers with at least one order, counted once."
-=======
-    description: "Real (account_type = 'customer') canonical app customers with at least one order, counted once."
->>>>>>> main
   }
 }
 
