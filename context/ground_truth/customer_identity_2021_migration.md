@@ -48,3 +48,4 @@ python -m generators.identity_measures --output context/ground_truth/customer_id
 |---|---:|---:|---:|
 | Correct (deduplicated canonical customer set) | 22,138 | 13,020 | $25,703,938.86 |
 | Unsafe alias-bridge fanout | — | 42,975 | $91,673,125.66 |
+| Test and internal accounts left in (wrong) | — | — | $25,733,431.14 |

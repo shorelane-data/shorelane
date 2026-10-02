@@ -93,18 +93,11 @@ questions:
     trap: >
       Counting raw IDs answers at alias grain ({naive:,}), while an inner join silently
       retains only {inner:,} aliases. Counting all resolved app profiles returns {profiles:,},
-<<<<<<< HEAD
-      including profiles with no orders. Counting every ordering app ID returns {unfiltered:,},
-      including test and internal accounts. The business customer count is the {ordered:,}
-      ordered real canonical customers, with unresolved quality reported separately.
-    silent_fail_values: [{naive}, {inner}, {profiles}, {unfiltered}]
-=======
       including profiles with no orders, and counting every ordering account returns
       {ordered_all:,}, including test and internal accounts. The business customer count
       is the {ordered:,} ordered real canonical customers, with unresolved quality reported
       separately.
     silent_fail_values: [{naive}, {inner}, {profiles}, {ordered_all}]
->>>>>>> main
 
   - id: identity_pre_migration_shopify
     prompt: >
@@ -167,7 +160,6 @@ def main() -> int:
         rec=rev["recognized_revenue"], gmv=rev["gmv"], net=rev["net_revenue"],
         billed=rev["billed_revenue"], cash=rev["collected_cash"],
         ordered=idm["ordered_canonical_customer_count"],
-        unfiltered=idm["unfiltered_ordered_canonical_customer_count"],
         unresolved=idm["unresolved_source_id_count"],
         null_rate=idm["resolution_null_rate"],
         naive=idm["naive_distinct_source_id_count"],

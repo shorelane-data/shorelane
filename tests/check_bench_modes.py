@@ -203,17 +203,12 @@ class GoldValuesTest(unittest.TestCase):
         # Read from the derived eval file rather than typed here, so a measure
         # change re-derives these too.
         golds = leakage.gold_values()
-<<<<<<< HEAD
-        for value in ("4932192.31", "4757319.70", "22371", "22628", "25703938.86", "91673125.66"):
-            self.assertIn(value, golds)
-=======
         questions = yaml.safe_load((REPO_ROOT / "evals" / "questions.yaml").read_text())["questions"]
         values = [q["canonical_answer"]["value"] for q in questions]
         values += [v for q in questions for v in q.get("silent_fail_values") or []]
         self.assertGreaterEqual(len(values), 10)
         for value in values:
             self.assertIn(leakage._distinctive(value), golds)
->>>>>>> main
 
     def test_number_normalization(self):
         self.assertEqual(

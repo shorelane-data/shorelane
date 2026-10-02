@@ -33,7 +33,7 @@ view: dim_customers {
     type: count_distinct
     sql: ${app_db_customer_id} ;;
     filters: [has_order: "yes", account_type: "customer"]
-    description: "Real (non-test, non-internal) canonical app customers with at least one order, counted once."
+    description: "Real (account_type = 'customer') canonical app customers with at least one order, counted once."
   }
 }
 

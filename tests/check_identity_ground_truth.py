@@ -60,10 +60,6 @@ def main() -> int:
         == measures["resolved_source_id_count"]
     )
     assert measures["naive_distinct_source_id_count"] > measures["ordered_canonical_customer_count"]
-    assert (
-        measures["unfiltered_ordered_canonical_customer_count"]
-        > measures["ordered_canonical_customer_count"]
-    ), "test/internal accounts must still inflate the unfiltered customer count"
     assert measures["unsafe_fanout_gmv"] > measures["correct_multi_source_gmv"]
     assert (
         measures["unsafe_fanout_order_row_count"]
