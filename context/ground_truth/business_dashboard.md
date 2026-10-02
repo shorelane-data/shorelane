@@ -17,7 +17,7 @@ pipeline can drip-feed data daily; every window below is therefore **pinned with
 against both the full fixture and the live drip-fed warehouse (query with the
 explicit date bounds shown). Orders from non-`customer` accounts
 (`app_db__customers.account_type` in `test`, `internal`) are excluded from every
-revenue figure, matching `fct_revenue`; channels are at canonical grain
+figure (revenue, customers, orders, refunds), matching `fct_revenue` and `fct_orders`; channels are at canonical grain
 (`direct` coalesced to `d2c`).
 
 ## Last 12 Months (2025-01-01 .. 2025-12-31)
@@ -28,13 +28,13 @@ revenue figure, matching `fct_revenue`; channels are at canonical grain
 | GMV | $33,042,600.74 |
 | Net revenue | $32,183,536.37 |
 | Collected cash | $29,799,429.65 |
-| Active customers | 9,184 |
-| New customers | 4,544 |
-| Orders | 14,748 |
-| Avg order value | $2,240.48 |
-| Refund rate (of GMV) | 0.52% |
+| Active customers | 9,107 |
+| New customers | 4,496 |
+| Orders | 14,583 |
+| Avg order value | $2,265.83 |
+| Refund rate (of GMV) | 0.51% |
 
-Revenue by channel: Business Subscriptions $25,625,076.64 · Direct-to-Consumer $2,536,029.39 · Marketplace $172,565.39.
+Revenue by channel: Business Subscriptions $25,625,076.64 · Direct-to-Consumer $2,509,432.38 · Marketplace $171,588.57.
 
 ## Last 24 Months (2024-01-01 .. 2025-12-31)
 
@@ -44,10 +44,10 @@ Revenue by channel: Business Subscriptions $25,625,076.64 · Direct-to-Consumer 
 | GMV | $58,746,539.60 |
 | Net revenue | $57,147,816.81 |
 | Collected cash | $52,910,562.09 |
-| Active customers | 12,686 |
-| New customers | 8,697 |
-| Orders | 27,943 |
-| Avg order value | $2,102.37 |
+| Active customers | 12,568 |
+| New customers | 8,615 |
+| Orders | 27,603 |
+| Avg order value | $2,128.27 |
 | Refund rate (of GMV) | 0.53% |
 
 ## Through 2025 (2019-01-01 .. 2025-12-31)
@@ -58,10 +58,10 @@ Revenue by channel: Business Subscriptions $25,625,076.64 · Direct-to-Consumer 
 | GMV | $113,830,456.22 |
 | Net revenue | $109,699,531.15 |
 | Collected cash | $101,415,096.43 |
-| Total customers | 22,628 |
-| Orders | 69,124 |
-| Avg order value | $1,646.76 |
-| Refund rate (of GMV) | 0.72% |
+| Total customers | 22,371 |
+| Orders | 68,160 |
+| Avg order value | $1,670.05 |
+| Refund rate (of GMV) | 0.71% |
 
 ## Notes for the demo
 

@@ -4,7 +4,9 @@ Source-of-truth metrics for the Shorelane executive dashboard.
 Everything here is DERIVED from the same raw tables the warehouse loads, so the
 dashboard is a thing you can validate agent answers against — not a second source
 of generation logic. Revenue reuses the canonical generators/measures.py
-(five_revenues); customer / order / refund dimensions are aggregated here.
+(five_revenues); customer / order / refund dimensions are aggregated here, over
+the same eligible orders (test and internal accounts excluded, via
+measures.revenue_tables) so every tile shares one population.
 
 Headline "Revenue" = recognized_revenue (GAAP), the canonical default from
 context/metrics/revenue.yml.
@@ -30,7 +32,7 @@ import config
 from generators import dataset
 from generators.dataset import RAW_TABLES
 from generators.common import canonical_channel
-from generators.measures import five_revenues
+from generators.measures import five_revenues, revenue_tables
 
 # Period filter options, keyed to a trailing window length in months (None = all).
 PERIODS: dict[str, int | None] = {
@@ -95,8 +97,8 @@ def prior_bounds(start: pd.Timestamp, months: int | None) -> tuple[pd.Timestamp,
 def monthly_metrics(tables: dict[str, pd.DataFrame]) -> pd.DataFrame:
     """One row per month from START to the last order month, every measure the
     dashboard charts need. Revenue columns come from the canonical five_revenues."""
-    orders = tables["app_db__orders"]
-    refunds = tables["stripe__refunds"]
+    eligible = revenue_tables(tables)
+    orders, refunds = eligible["orders"], eligible["refunds"]
     end_month = data_end_month(tables)
     months = pd.date_range(config.START_DATE, end_month, freq="MS")
 
@@ -138,8 +140,9 @@ def monthly_metrics(tables: dict[str, pd.DataFrame]) -> pd.DataFrame:
 
 def revenue_by_channel(tables: dict[str, pd.DataFrame], start: pd.Timestamp, end: pd.Timestamp) -> pd.DataFrame:
     """Recognized revenue split by channel for a period (recognition joined to orders)."""
-    rec = tables["app_db__revenue_recognition"].merge(
-        tables["app_db__orders"][["order_id", "channel"]], on="order_id", how="left"
+    eligible = revenue_tables(tables)
+    rec = eligible["recognition"].merge(
+        eligible["orders"][["order_id", "channel"]], on="order_id", how="left"
     )
     mask = (rec.recognition_date >= start) & (rec.recognition_date <= end)
     grp = rec[mask].groupby("channel")["amount"].sum()
@@ -150,8 +153,8 @@ def revenue_by_channel(tables: dict[str, pd.DataFrame], start: pd.Timestamp, end
 
 def kpis(tables: dict[str, pd.DataFrame], start: pd.Timestamp, end: pd.Timestamp) -> dict[str, float]:
     """Headline KPI bundle for a period. Revenue is recognized (GAAP)."""
-    orders = tables["app_db__orders"]
-    refunds = tables["stripe__refunds"]
+    eligible = revenue_tables(tables)
+    orders, refunds = eligible["orders"], eligible["refunds"]
     rev = five_revenues(tables, start.strftime("%Y-%m-%d"), end.strftime("%Y-%m-%d"))
 
     in_orders = orders[(orders.order_date >= start) & (orders.order_date <= end)]
@@ -228,7 +231,7 @@ pipeline can drip-feed data daily; every window below is therefore **pinned with
 against both the full fixture and the live drip-fed warehouse (query with the
 explicit date bounds shown). Orders from non-`customer` accounts
 (`app_db__customers.account_type` in `test`, `internal`) are excluded from every
-revenue figure, matching `fct_revenue`; channels are at canonical grain
+figure (revenue, customers, orders, refunds), matching `fct_revenue` and `fct_orders`; channels are at canonical grain
 (`direct` coalesced to `d2c`).
 
 {kpi_table('Last 12 Months')}

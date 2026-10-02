@@ -24,27 +24,27 @@ fixture and the live drip-fed warehouse.
 
 | KPI | Value |
 |---|---:|
-| Current customers (at window end) | 9,184 |
+| Current customers (at window end) | 9,107 |
 | Current subscribers (at window end) | 3,232 |
-| Current d2c customers (at window end) | 6,246 |
-| Current marketplace customers (at window end) | 2,653 |
-| Active customers (ordered in window) | 9,184 |
-| New customers (first order in window) | 4,544 |
-| Returning share of actives | 50.52% |
-| Multi-channel customers (in window) | 2,681 |
+| Current d2c customers (at window end) | 6,184 |
+| Current marketplace customers (at window end) | 2,622 |
+| Active customers (ordered in window) | 9,107 |
+| New customers (first order in window) | 4,496 |
+| Returning share of actives | 50.63% |
+| Multi-channel customers (in window) | 2,665 |
 
 ## All Time (2019-01-01 .. 2025-12-31)
 
 | KPI | Value |
 |---|---:|
-| Current customers (at window end) | 9,184 |
+| Current customers (at window end) | 9,107 |
 | Current subscribers (at window end) | 3,232 |
-| Current d2c customers (at window end) | 6,246 |
-| Current marketplace customers (at window end) | 2,653 |
-| Active customers (ordered in window) | 22,628 |
-| New customers (first order in window) | 22,628 |
+| Current d2c customers (at window end) | 6,184 |
+| Current marketplace customers (at window end) | 2,622 |
+| Active customers (ordered in window) | 22,371 |
+| New customers (first order in window) | 22,371 |
 | Returning share of actives | 0.00% |
-| Multi-channel customers (in window) | 9,529 |
+| Multi-channel customers (in window) | 9,443 |
 
 ## Identity health (arrival rule applied as of 2025-12-31)
 
@@ -54,8 +54,8 @@ fixture and the live drip-fed warehouse.
 | Unresolved aliases | 1,180 |
 | Resolution null rate | 0.016626 |
 | Canonical app profiles | 25,359 |
-| Ever-ordered canonical customers | 22,628 |
-| Avg source IDs per ordered customer | 2.964 |
+| Ever-ordered canonical customers | 22,371 |
+| Avg source IDs per ordered customer | 2.965 |
 | Pre-migration Shopify aliases missing from crosswalk | 533 |
 | Pre-migration Salesforce aliases missing from crosswalk | 142 |
 
