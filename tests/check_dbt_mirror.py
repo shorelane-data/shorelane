@@ -24,6 +24,7 @@ CANONICAL_COMMIT = "2830281dd3b84d4287bc0c7f5411d21e37f7f7a8"
 
 EXPECTED_SOURCE_PATHS = (
     "dbt_project.yml",
+    "macros/assert_raw_dataset_matches_target.sql",
     "macros/money.sql",
     "models/intermediate/_intermediate.yml",
     "models/intermediate/int_customer_identity.sql",

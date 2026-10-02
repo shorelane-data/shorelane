@@ -8,6 +8,11 @@
       "sha256": "50675578622f67edb33e0815642538cd207a4fabd47511dae91b2e25f6981477"
     },
     {
+      "source": "macros/assert_raw_dataset_matches_target.sql",
+      "mirror": "dbt/macros/assert_raw_dataset_matches_target.sql",
+      "sha256": "7c77f5e833bdc2414db42a4b5c4cb98553ecaf59d33fb1d43941fbca60b87082"
+    },
+    {
       "source": "macros/money.sql",
       "mirror": "dbt/macros/money.sql",
       "sha256": "a2b2c39c61ecd766c34c308a3c49697a92ff60c8ed5c45b26219aad9185b615e"
