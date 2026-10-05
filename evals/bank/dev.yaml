@@ -381,7 +381,6 @@ questions:
       and a plan mix that shifted from Enterprise toward Essentials.'
     must_not:
     - Claims existing or grandfathered subscribers were repriced.
-    - Concludes new ACV was not hurt on the strength of higher ACV per seat alone.
     evidence:
       gen3_price_per_seat:
         essentials:
@@ -455,8 +454,7 @@ questions:
     - Quantifies Q4 2022 enterprise renewal churn as far above SMB and above other quarters (terms ending
       in the quarter, renewed vs churned).
     - Links it to a spike in billing support tickets from enterprise customers beginning around September
-      2022 (a billing incident), counting tickets by the requester's canonical customer segment rather
-      than by requester source system.
+      2022 (a billing incident).
     - Resolves ticket requesters to customers through the identity crosswalk (source system plus source
       id to the canonical customer), not by joining raw requester ids to customer ids.
     must_not:

@@ -82,7 +82,6 @@ questions:
           sign-ups and a plan mix that shifted from Enterprise toward Essentials.
       must_not:
         - Claims existing or grandfathered subscribers were repriced.
-        - Concludes new ACV was not hurt on the strength of higher ACV per seat alone.
     trap: >
       The cause is a price-table change (app_db__plan_prices), not a sales table.
       Counting all terms started (renewals included) blurs the dip.
@@ -105,10 +104,7 @@ questions:
           keys: [renewal_outcomes, enterprise_billing_tickets_by_month, enterprise_high_priority_billing_tickets_by_month]
       must:
         - Quantifies Q4 2022 enterprise renewal churn as far above SMB and above other quarters (terms ending in the quarter, renewed vs churned).
-        - >-
-          Links it to a spike in billing support tickets from enterprise customers beginning around
-          September 2022 (a billing incident), counting tickets by the requester's canonical customer
-          segment rather than by requester source system.
+        - Links it to a spike in billing support tickets from enterprise customers beginning around September 2022 (a billing incident).
         - >-
           Resolves ticket requesters to customers through the identity crosswalk (source system plus
           source id to the canonical customer), not by joining raw requester ids to customer ids.
