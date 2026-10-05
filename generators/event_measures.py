@@ -108,6 +108,17 @@ def derive_event_measures(tables: Mapping[str, pd.DataFrame]) -> dict[str, dict]
             m: round(float(new[new.start_month == m].acv.sum() / new[new.start_month == m].seats.sum()), 2)
             for m in months
         },
+        # "Did it hurt new ACV?" is answered by total new ACV, not by ACV per seat:
+        # the price rise per seat only partly offsets fewer sign-ups and a mix shift.
+        "new_subscription_acv_by_month": {
+            m: round(float(new[new.start_month == m].acv.sum()), 2) for m in months
+        },
+        "new_seat_share_by_plan": {
+            label: {pid: round(float(w[w.plan_id == pid].seats.sum() / w.seats.sum()), 4)
+                    for pid in sorted(w.plan_id.unique())}
+            for label, w in (("2025-02..2025-04", new[new.start_month.isin(months[0:3])]),
+                             ("2025-05..2025-07", new[new.start_month.isin(months[3:6])]))
+        },
     }
 
     # --- enterprise churn: renewal outcomes for terms ending each quarter
@@ -125,9 +136,23 @@ def derive_event_measures(tables: Mapping[str, pd.DataFrame]) -> dict[str, dict]
             }
     months = ["2022-07", "2022-08", "2022-09", "2022-10", "2022-11", "2022-12", "2023-01"]
     ent_billing = tickets[(tickets.category == "billing") & (tickets.requester_source_system == "salesforce")]
+    # Enterprise tickets: each requester resolved through the crosswalk (source system +
+    # source id) to its canonical customer, whose segment decides; real customers only.
+    # The Salesforce-requester counts below are business tickets across ALL segments.
+    xw = tables["app_db__customer_id_crosswalk"][["source_system", "source_customer_id", "app_db_customer_id"]]
+    who = tables["app_db__customers"][["app_db_customer_id", "segment", "account_type"]]
+    resolved = (tickets.merge(xw, how="left", left_on=["requester_source_system", "requester_source_id"],
+                              right_on=["source_system", "source_customer_id"])
+                .merge(who, how="left", on="app_db_customer_id"))
+    ent_tickets = resolved[(resolved.category == "billing") & (resolved.segment == "enterprise")
+                           & (resolved.account_type == "customer")]
     out["enterprise_churn_2022_q4"] = {
         "window": "2022-10-01..2022-12-31",
         "renewal_outcomes": churn,
+        "enterprise_billing_tickets_by_month": {m: int((ent_tickets.month == m).sum()) for m in months},
+        "enterprise_high_priority_billing_tickets_by_month": {
+            m: int(((ent_tickets.month == m) & ent_tickets.priority.isin(["high", "urgent"])).sum()) for m in months
+        },
         "business_billing_tickets_by_month": {m: int((ent_billing.month == m).sum()) for m in months},
         "business_high_priority_billing_tickets_by_month": {
             m: int(((ent_billing.month == m) & ent_billing.priority.isin(["high", "urgent"])).sum()) for m in months
@@ -191,6 +216,11 @@ def render_markdown(m: Mapping[str, dict]) -> str:
         f"| {pid} | " + " → ".join(f"{d}: ${p:,.2f}" for d, p in hist.items()) + " |"
         for pid, hist in pi["gen3_price_per_seat"].items()
     )
+    share = pi["new_seat_share_by_plan"]
+    share_rows = "\n".join(
+        f"| {pid} | " + " | ".join(f"{w[pid] * 100:.2f}%" for w in share.values()) + " |"
+        for pid in sorted({p for w in share.values() for p in w})
+    )
     return f"""# Ground truth — seeded events (diagnostic and prescriptive substrate)
 
 Dataset: **{config.DATASET_VERSION}** (SEED={config.SEED}). These figures are
@@ -232,6 +262,11 @@ North Paper Mills shipped **{so['paper_units_received_in_window']:,} of
 
 {_table(pi['new_subscription_starts_by_month'], 'New subscription starts by month', num)}
 {_table(pi['new_subscription_acv_per_seat_by_month'], 'New-subscription ACV per seat by month', money)}
+{_table(pi['new_subscription_acv_by_month'], 'New-subscription ACV by month (total)', money)}
+| Plan | {' | '.join(pi['new_seat_share_by_plan'])} |
+|---|{'---:|' * len(pi['new_seat_share_by_plan'])}
+{share_rows}
+
 ## 4. Enterprise churn — {ch['window']} (cause: `zendesk__tickets`)
 
 Renewal outcomes for terms ending in each quarter (`status` in `renewed`, `churned`):
@@ -240,7 +275,9 @@ Renewal outcomes for terms ending in each quarter (`status` in `renewed`, `churn
 |---|---:|---:|---:|---:|
 {churn_rows}
 
-{_table(ch['business_billing_tickets_by_month'], 'Business (Salesforce-requester) billing tickets by month', num)}
+{_table(ch['enterprise_billing_tickets_by_month'], 'Enterprise billing tickets by month (requester resolved to its canonical customer)', num)}
+{_table(ch['enterprise_high_priority_billing_tickets_by_month'], 'of which high/urgent priority', num)}
+{_table(ch['business_billing_tickets_by_month'], 'Business (Salesforce-requester, all segments) billing tickets by month', num)}
 {_table(ch['business_high_priority_billing_tickets_by_month'], 'of which high/urgent priority', num)}
 ## 5. Paid-media cut — {ad['window']} (cause: `ads__daily_spend`)
 
