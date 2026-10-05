@@ -71,11 +71,15 @@ questions:
         fn: event_evidence
         params:
           event: sub_price_increase_2025_05
-          keys: [gen3_price_per_seat, new_subscription_starts_by_month, new_subscription_acv_per_seat_by_month]
+          keys: [gen3_price_per_seat, new_subscription_starts_by_month, new_subscription_acv_per_seat_by_month,
+                 new_subscription_acv_by_month, new_seat_share_by_plan]
       must:
         - Identifies the generation-3 plan price increase effective 2025-05-01 (about +12% per seat) as the driver.
         - Shows new first-term starts dipping for roughly three months from May 2025.
-        - Notes that ACV per seat on new subscriptions rose, so the dip in count is partly offset in value.
+        - >-
+          Answers "did it hurt new ACV?" from total new ACV, not from ACV per seat alone: new ACV per month
+          fell against the pre-May baseline, because the higher ACV per seat only partly offset fewer
+          sign-ups and a plan mix that shifted from Enterprise toward Essentials.
       must_not:
         - Claims existing or grandfathered subscribers were repriced.
     trap: >
@@ -97,11 +101,13 @@ questions:
         fn: event_evidence
         params:
           event: enterprise_churn_2022_q4
-          keys: [renewal_outcomes, business_billing_tickets_by_month, business_high_priority_billing_tickets_by_month]
+          keys: [renewal_outcomes, enterprise_billing_tickets_by_month, enterprise_high_priority_billing_tickets_by_month]
       must:
         - Quantifies Q4 2022 enterprise renewal churn as far above SMB and above other quarters (terms ending in the quarter, renewed vs churned).
-        - Links it to a spike in billing support tickets from business customers beginning around September 2022 (a billing incident).
-        - Resolves ticket requesters to customers through their source-system identity (Salesforce requester ids), not by joining on raw ids.
+        - Links it to a spike in billing support tickets from enterprise customers beginning around September 2022 (a billing incident).
+        - >-
+          Resolves ticket requesters to customers through the identity crosswalk (source system plus
+          source id to the canonical customer), not by joining raw requester ids to customer ids.
       must_not:
         - Computes churn with undecided (still-running) terms in the denominator.
     trap: >

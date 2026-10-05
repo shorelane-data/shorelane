@@ -120,6 +120,23 @@ North Paper Mills shipped **0 of
 | 2025-08 | $228.88 |
 | 2025-09 | $233.12 |
 
+| New-subscription ACV by month (total) | Value |
+|---|---:|
+| 2025-02 | $534,672.00 |
+| 2025-03 | $723,480.00 |
+| 2025-04 | $651,228.00 |
+| 2025-05 | $563,189.76 |
+| 2025-06 | $531,121.92 |
+| 2025-07 | $550,542.72 |
+| 2025-08 | $569,694.72 |
+| 2025-09 | $777,221.76 |
+
+| Plan | 2025-02..2025-04 | 2025-05..2025-07 |
+|---|---:|---:|
+| enterprise | 52.56% | 46.41% |
+| essentials | 21.42% | 27.73% |
+| growth | 26.02% | 25.86% |
+
 ## 4. Enterprise churn — 2022-10-01..2022-12-31 (cause: `zendesk__tickets`)
 
 Renewal outcomes for terms ending in each quarter (`status` in `renewed`, `churned`):
@@ -137,7 +154,27 @@ Renewal outcomes for terms ending in each quarter (`status` in `renewed`, `churn
 | 2023Q2 smb | 340 | 68 | 20.00% | $194,448.00 |
 | 2023Q2 enterprise | 88 | 5 | 5.68% | $105,744.00 |
 
-| Business (Salesforce-requester) billing tickets by month | Value |
+| Enterprise billing tickets by month (requester resolved to its canonical customer) | Value |
+|---|---:|
+| 2022-07 | 8 |
+| 2022-08 | 5 |
+| 2022-09 | 383 |
+| 2022-10 | 431 |
+| 2022-11 | 365 |
+| 2022-12 | 6 |
+| 2023-01 | 7 |
+
+| of which high/urgent priority | Value |
+|---|---:|
+| 2022-07 | 0 |
+| 2022-08 | 2 |
+| 2022-09 | 379 |
+| 2022-10 | 424 |
+| 2022-11 | 364 |
+| 2022-12 | 0 |
+| 2023-01 | 1 |
+
+| Business (Salesforce-requester, all segments) billing tickets by month | Value |
 |---|---:|
 | 2022-07 | 23 |
 | 2022-08 | 14 |
