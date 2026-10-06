@@ -18,7 +18,11 @@ questions:
     trap: >
       A plausible-wrong answer filters product names or promo codes for anything
       gift-like, or reports total recognized revenue.
+    intent: >
+      Gift card revenue recognized in 2025; Shorelane's data carries no gift cards, so
+      the right answer says it can't be answered.
     split: dev
+    status: confirmed
     provenance: {source: authored, context_seeds: [marketing-data-limits.seed.yaml]}
 
   - id: na_nps_q2_2026
@@ -34,7 +38,11 @@ questions:
     trap: >
       A plausible-wrong answer invents a proxy from ticket volume or resolution time
       and reports it as NPS.
+    intent: >
+      Net Promoter Score for Q2 2026; no survey data exists, so the right answer says
+      it can't be answered.
     split: dev
+    status: confirmed
     provenance: {source: authored, context_seeds: [customers-unavailable-data.seed.yaml, marketing-data-limits.seed.yaml]}
 
   - id: na_store_visits_2025
@@ -49,7 +57,11 @@ questions:
       absent_terms: [visit, footfall, store, session, pageview]
     trap: >
       A plausible-wrong answer reports ad clicks or order counts as visits.
+    intent: >
+      Physical store visits in December 2025; Shorelane has no stores or footfall
+      data, so the right answer says it can't be answered.
     split: dev
+    status: confirmed
     provenance: {source: authored, context_seeds: [customers-unavailable-data.seed.yaml, marketing-data-limits.seed.yaml]}
 
   - id: na_revenue_september_2026
@@ -65,7 +77,11 @@ questions:
       The warehouse holds nothing after the as_of, so a revenue query for September
       returns an empty sum. Wrong paths: reporting it as zero revenue, or silently
       substituting a forecast or the latest complete month.
+    intent: >
+      Revenue for September 2026, which is after the data's as_of (2026-08-31); the
+      right answer says the month isn't loaded yet.
     split: dev
+    status: confirmed
     provenance: {source: authored, context_seeds: []}
 
   - id: na_email_open_rate_btb
@@ -81,5 +97,9 @@ questions:
     trap: >
       A plausible-wrong answer reports promo redemption rate or ad click-through rate
       as the open rate.
+    intent: >
+      Email open rate on the Back to Business campaign; no email engagement data is
+      loaded, so the right answer says it can't be answered.
     split: dev
+    status: confirmed
     provenance: {source: authored, context_seeds: []}
