@@ -126,8 +126,9 @@ def assigned_split(qid: str) -> str:
     return "dev" if bucket < DEV_SHARE else "holdout"
 SPEC_KEYS = {
     "id", "tier", "trap_tag", "prompt", "persona", "pinned_scope", "gold", "gold_sql",
-    "trap", "context_required", "split", "provenance",
+    "trap", "context_required", "split", "provenance", "intent", "status",
 }
+STATUSES = ("draft", "confirmed")
 
 
 class SpecError(Exception):
@@ -165,7 +166,7 @@ def validate_spec(q: dict, bench: dict, split: str) -> list[str]:
     extra = set(q) - SPEC_KEYS - {"domain", "_file"}
     if extra:
         errs.append(f"unknown keys {sorted(extra)}")
-    for key in ("id", "tier", "trap_tag", "prompt", "gold", "split", "provenance"):
+    for key in ("id", "tier", "trap_tag", "prompt", "intent", "status", "gold", "split", "provenance"):
         if key not in q:
             errs.append(f"missing {key}")
     if errs:
@@ -176,6 +177,10 @@ def validate_spec(q: dict, bench: dict, split: str) -> list[str]:
         errs.append(f"tier {q['tier']!r} not in {TIERS}")
     if q["trap_tag"] not in TRAP_TAGS:
         errs.append(f"trap_tag {q['trap_tag']!r} not in {TRAP_TAGS}")
+    if not isinstance(q["intent"], str) or not q["intent"].strip():
+        errs.append("intent must say, in words, what the gold measures")
+    if q["status"] not in STATUSES:
+        errs.append(f"status {q['status']!r} not in {STATUSES}")
     if q["split"] != split:
         errs.append(f"split {q['split']!r} does not match this build ({split!r})")
     if ID_RE.match(q["id"]) and q["split"] != assigned_split(q["id"]):
@@ -335,6 +340,8 @@ def render_entry(q: dict, d, bench: dict) -> tuple[dict, list[str]]:
         "gold_sql": q["gold_sql"].replace("{bench}", bench["dataset"]).strip() + "\n" if q.get("gold_sql") else None,
         "silent_fail_values": _clean(d.silent_fail),
         "trap": " ".join((q.get("trap") or "").split()) or None,
+        "intent": " ".join(q["intent"].split()),
+        "status": q["status"],
         "context_required": list(q.get("context_required") or []),
         "split": q["split"],
         "provenance": dict(q["provenance"]),

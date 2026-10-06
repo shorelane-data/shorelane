@@ -10,6 +10,8 @@ every graded number derived from the generators.
 | `derive.py` | the gold derivations the specs name (generic, parameterized) | people |
 | `dev.yaml` | the dev split with golds, silent-fail values and evidence filled in | `evals/build_bank.py` |
 | `local_warehouse.py` | DuckDB replica of the bench warehouse for checking `gold_sql` offline | people |
+| `seed_overlap.py` | checks `provenance.context_seeds` against the analytics-context seeds | people |
+| `export_seeds.py` | one-way export of the bank as ACF eval seeds | people |
 
 ```
 python evals/build_bank.py                                  # re-derive dev.yaml
@@ -45,6 +47,8 @@ Authored in a spec (the domain comes from the spec file):
 | `tier` | `descriptive` (a number or table), `diagnostic` (why did X move), `unanswerable` |
 | `trap_tag` | the one silent-SQL failure the question is built around (below) |
 | `prompt` | exactly what the agent receives, after the mode-independent preamble |
+| `intent` | what the asker means, in words: the definition the gold measures. Metadata for reviewers, the judge and the seed export; never shown to the agent |
+| `status` | `confirmed` once a person has checked the intent and gold against the business definition; `draft` until then |
 | `persona` | who is asking (metadata only; anything the agent needs is in `prompt`) |
 | `pinned_scope` | `window: {start, end}` or `at: <date>`, inclusive, both on or before the bench `as_of`; `question_as_of` when the prompt names its own as-of |
 | `gold.kind` | `value`, `result_set`, `criteria` (diagnostic, judged) or `refusal` |
@@ -144,3 +148,46 @@ are named. The 8 independent dev questions are the March 2023 consumer-orders
 diagnostic, 2025 ad spend by platform, 2025 GMV of paper orders, the three operations
 as-of questions, revenue for September 2026 (after the as_of) and the BTB15 email
 open rate. Holdout questions are checked the same way before they count as independent.
+
+## Exporting as ACF eval seeds
+
+The bank and the analytics-context seeds are separate formats with separate jobs: a
+seed records what one interview confirmed, while a bank question carries a derived gold,
+a second derivation (`gold_sql`) and a trap. `evals/bank/export_seeds.py` converts
+the bank into seeds, one way only, so nodal-context's `eval_harness` can grade a
+bank question the way it grades a context's own seeds. The harness has a model write
+SQL for the question and an LLM judge it against `expected`:
+
+```
+make bank-export OUT=/tmp/bank-seeds                          # descriptive questions, as sql_shape
+python evals/bank/export_seeds.py --out /tmp/bank-seeds \
+    --tiers descriptive,diagnostic,unanswerable --values \
+    --schema ../nodal-context/schemas/evalseed.schema.json    # every tier, value golds as values
+cd ../nodal-context && python -m eval_harness.run --adapter acf \
+    --root ../shorelane-analytics-context --seeds /tmp/bank-seeds
+```
+
+The harness grades `confirmed` seeds by default. At the pinned context every one of
+its own seeds is still `draft`, so a run like this grades the bank's seeds only.
+
+| bank | seed |
+|---|---|
+| `prompt` / `intent` / `status` | `question` / `intent` / `status` |
+| `domain` | the context domain: revenue → `executive-revenue`; customers, marketing, subscriptions unchanged; diagnostics and unanswerable mapped per question by topic; operations has no context domain and is skipped |
+| `provenance.source` | `dashboard` for a dashboard source, else `generated` |
+| value / result_set gold | `sql_shape`: `must_include` the intent, `must_exclude` the trap's wrong paths. With `--values`, a value gold becomes `value_at_snapshot` (`value`, `as_of` = the bench as_of), which the harness skips without a warehouse |
+| criteria gold (diagnostic) | `sql_shape`: `must_include` = `must`, `must_exclude` = `must_not` |
+| refusal gold | `sql_shape`: `must_include` "says the data cannot answer", `must_exclude` the trap |
+
+What the harness grades is narrower than what the bench grades. It judges the shape
+of one SQL query, without running it, so a seed passes on the right definition even
+when the number would be wrong, and diagnostic criteria or refusals fit a SQL query
+only loosely. That is why only descriptive questions are exported by default. Use the
+harness to compare contexts on definitions; the bench, which runs agents against the
+warehouse and scores their numbers, stays the measure of correctness.
+
+The export carries graded answers, and with `--values` the graded numbers too. It
+refuses to write under any directory holding a `context.config.yaml`, because seeds
+committed to the analytics-context repo would leak into the benchmark workspaces.
+Never export the holdout bank anywhere public.
+

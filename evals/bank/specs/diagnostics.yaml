@@ -29,7 +29,12 @@ questions:
       erp__supplier_shipments. An agent that looks at sales tables alone reaches for
       seasonality.
     context_required: []
+    intent: >
+      The cause of the March 2023 consumer order dip: the paper supplier's shipments
+      stopped from early March to early April 2023, so paper went short and paper's
+      share of consumer line revenue collapsed until supply returned.
     split: dev
+    status: confirmed
     provenance: {source: context/ground_truth/events.md#supplier_outage_2023_03, context_seeds: []}
 
   - id: diag_aov_drop_2024_09
@@ -56,7 +61,12 @@ questions:
       app_db__promotions and the orders' promo_code; line-level discount_pct carries
       the magnitude.
     context_required: []
+    intent: >
+      The cause of the September 2024 consumer AOV drop alongside strong order volume:
+      the Back to Business promotion (BTB15, 15% off) lifted order count while its
+      discount lowered order value.
     split: dev
+    status: confirmed
     provenance: {source: context/ground_truth/events.md#promo_back_to_business_2024_09, context_seeds: [marketing-consumer-aov.seed.yaml, marketing-promotion-grain.seed.yaml, marketing-promotion-names.seed.yaml]}
 
   - id: diag_subscription_starts_dip_2025
@@ -86,7 +96,12 @@ questions:
       The cause is a price-table change (app_db__plan_prices), not a sales table.
       Counting all terms started (renewals included) blurs the dip.
     context_required: [acf:domains/subscriptions/]
+    intent: >
+      The cause of the dip in new first-term subscription starts from May 2025 (the
+      generation-3 per-seat price increase effective 2025-05-01), and whether total
+      new ACV per month fell against the pre-May baseline, which it did.
     split: dev
+    status: confirmed
     provenance: {source: context/ground_truth/events.md#sub_price_increase_2025_05, context_seeds: [subscriptions-price-change.seed.yaml, subscription-starts.seed.yaml, subscriptions-new-seat-weighting.seed.yaml, grandfathered-plans.seed.yaml]}
 
   - id: diag_enterprise_churn_2022_q4
@@ -115,7 +130,13 @@ questions:
       tickets keyed by source-native ids, which need identity resolution to connect to
       subscription customers.
     context_required: [shorelane:context/guides/customer_identity.md, acf:domains/subscriptions/]
+    intent: >
+      How far enterprise renewal churn on terms ending in Q4 2022 exceeded SMB and
+      other quarters, and its cause: a billing incident visible as enterprise billing
+      tickets from about September 2022, linked to customers through the identity
+      crosswalk.
     split: dev
+    status: confirmed
     provenance: {source: context/ground_truth/events.md#enterprise_churn_2022_q4, related: bi/ad-hoc/10_billing_tickets_vs_enterprise_churn_2022.sql, context_seeds: [subscriptions-billing-incident.seed.yaml, renewal-rate.seed.yaml]}
 
   - id: diag_new_d2c_drop_2026_02
@@ -141,5 +162,10 @@ questions:
       The cause is in ads__daily_spend. Platform-reported conversions are inflated and
       the day totals in fct_marketing_spend repeat per platform row.
     context_required: [acf:domains/marketing/]
+    intent: >
+      The cause of the drop in new d2c customers (first-ever d2c orders) from February
+      2026: paid-media spend cut to about a third of run-rate on every platform from
+      February through April 2026, with acquisition recovering when spend returned.
     split: dev
+    status: confirmed
     provenance: {source: context/ground_truth/events.md#ad_spend_cut_2026_02, context_seeds: [marketing-paid-media-cut.seed.yaml, marketing-new-d2c.seed.yaml]}

@@ -22,7 +22,11 @@ questions:
       not 2025-12-31; filtering to is_current plans drops every grandfathered
       generation; seats and terms are different units.
     context_required: [shorelane:context/metrics/customers.yml, acf:domains/subscriptions/]
+    intent: >
+      Customers holding a subscription term that contains 2025-12-31, on any plan
+      generation, counted once per customer.
     split: dev
+    status: confirmed
     provenance: {source: context/ground_truth/subscriptions_dashboard.md, context_seeds: [active-subscribers.seed.yaml, current-subscribers.seed.yaml, subscriptions-stock-grain.seed.yaml, subscriptions-term-grain.seed.yaml, grandfathered-plans.seed.yaml]}
 
   - id: sub_active_by_generation_2025_12_31
@@ -47,7 +51,11 @@ questions:
       Retired (grandfathered) generations still carry live subscribers. Filtering to
       is_current plans reports only generation 3.
     context_required: [acf:domains/subscriptions/]
+    intent: >
+      Per plan generation, including retired ones: customers holding a term that
+      contains 2025-12-31, and the summed ACV of those terms.
     split: dev
+    status: confirmed
     provenance: {source: bi/ad-hoc/05_active_subscribers_by_plan_generation.sql, context_seeds: [grandfathered-plans.seed.yaml, subscriptions-stock-grain.seed.yaml, subscriptions-grandfathered-asof.seed.yaml, subscriptions-locked-price.seed.yaml]}
 
   - id: sub_renewal_rate_2025
@@ -73,7 +81,11 @@ questions:
       metric; renewals as a share of terms started answers "how much of our booking
       volume is renewals".
     context_required: [acf:domains/subscriptions/]
+    intent: >
+      Renewed / (renewed + churned) over subscription terms that ended in 2025,
+      counted in terms.
     split: dev
+    status: confirmed
     provenance: {source: context/ground_truth/subscriptions_dashboard.md, context_seeds: [renewal-rate.seed.yaml, subscriptions-renewal-cohort.seed.yaml]}
 
   - id: sub_new_subscriptions_2025
@@ -95,7 +107,10 @@ questions:
       Every renewal is a new term row. New subscriptions are first terms only;
       counting all terms started includes renewals.
     context_required: [acf:domains/subscriptions/]
+    intent: >
+      First subscription terms (not renewals) started in 2025.
     split: dev
+    status: confirmed
     provenance: {source: context/ground_truth/subscriptions_dashboard.md, context_seeds: [subscription-starts.seed.yaml, subscriptions-term-grain.seed.yaml]}
 
   - id: sub_churn_by_segment_2022
@@ -122,7 +137,11 @@ questions:
       GROUP BY quarter, segment
       ORDER BY quarter, segment
     context_required: []
+    intent: >
+      Per quarter of term end in 2022 and per customer segment: terms decided (renewed
+      or churned), terms churned, and churned / decided.
     split: dev
+    status: confirmed
     provenance: {source: bi/ad-hoc/06_renewal_churn_by_segment_and_quarter.sql, context_seeds: [renewal-rate.seed.yaml, subscriptions-renewal-cohort.seed.yaml, subscriptions-partial-quarter.seed.yaml]}
 
   - id: sub_growth_price_paid_2025
@@ -145,5 +164,10 @@ questions:
       applies only to terms starting after it, so the catalog's current price
       (dim_plans) overstates what the active base pays.
     context_required: [acf:domains/subscriptions/]
+    intent: >
+      Seat-weighted price per seat per year actually paid on Growth plan terms active
+      at 2025-12-31, each term at the price locked when it started (not the current
+      catalog price).
     split: dev
+    status: confirmed
     provenance: {source: context/ground_truth/events.md, context_seeds: [grandfathered-plans.seed.yaml, subscriptions-locked-price.seed.yaml, subscriptions-price-change.seed.yaml]}

@@ -22,7 +22,11 @@ questions:
       reads 'solved' today but was open at the end of June. Filtering status = 'open'
       answers "open now"; counting tickets created in June answers "opened".
     context_required: [dbt:models/staging/_staging.yml]
+    intent: >
+      Support tickets created on or before 2026-06-30 and not yet resolved as of that
+      date (the backlog at June 30, not tickets open at the snapshot).
     split: dev
+    status: confirmed
     provenance: {source: authored, context_seeds: []}
 
   - id: ops_shipments_in_transit_2026_06_30
@@ -44,7 +48,11 @@ questions:
       status = 'in_transit' is the state at the snapshot. The question asks about
       June 30, so received_date has to be compared with that date.
     context_required: [dbt:models/staging/_staging.yml]
+    intent: >
+      Supplier shipments due on or before 2026-06-30 whose received date is after that
+      date or missing (in transit as of June 30, not at the snapshot).
     split: dev
+    status: confirmed
     provenance: {source: authored, context_seeds: []}
 
   - id: ops_tickets_by_category_2025
@@ -64,5 +72,8 @@ questions:
       GROUP BY category
       ORDER BY category
     context_required: []
+    intent: >
+      Support tickets created in calendar 2025, counted per ticket category.
     split: dev
+    status: confirmed
     provenance: {source: authored, context_seeds: []}

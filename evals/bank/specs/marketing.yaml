@@ -35,7 +35,12 @@ questions:
       platform row, so summing it over rows multiplies the denominator by the number
       of platforms.
     context_required: [acf:domains/marketing/]
+    intent: >
+      Paid-media spend in H1 2026 divided by new d2c customers in H1 2026, where a new
+      d2c customer is a first-ever order placed in d2c (the warehouse-attributed
+      count, not platform-reported conversions).
     split: dev
+    status: confirmed
     provenance: {source: bi/ad-hoc/09_cac_reported_vs_attributed.sql, context_seeds: [marketing-cac-denominator.seed.yaml, marketing-new-d2c.seed.yaml, marketing-cac-timestamp-tie.seed.yaml]}
 
   - id: mkt_new_d2c_customers_q1_2026
@@ -59,7 +64,11 @@ questions:
       platform's row; summing it triple-counts. Platform-reported conversions are
       inflated. The attributed count is first-ever d2c orders.
     context_required: [acf:domains/marketing/]
+    intent: >
+      Customers whose first-ever order was placed in d2c during Q1 2026 (the
+      warehouse-attributed new d2c customer count, each counted once).
     split: dev
+    status: confirmed
     provenance: {source: bi/ad-hoc/09_cac_reported_vs_attributed.sql, context_seeds: [marketing-new-d2c.seed.yaml, marketing-first-date-row-count.seed.yaml, marketing-cac-denominator.seed.yaml]}
 
   - id: mkt_ad_spend_by_platform_2025
@@ -79,7 +88,10 @@ questions:
       GROUP BY platform
       ORDER BY platform
     context_required: []
+    intent: >
+      Total paid-media spend in USD per ad platform for calendar 2025.
     split: dev
+    status: confirmed
     provenance: {source: context/ground_truth/marketing_dashboard.md, context_seeds: []}
 
   - id: mkt_btb15_usage_2024
@@ -106,7 +118,11 @@ questions:
            WHERE order_id IN (SELECT order_id FROM promo)) AS discount_dollars,
         (SELECT ROUND(SUM(gross_amount), 2) FROM promo) AS promo_gmv
     context_required: []
+    intent: >
+      Orders placed in September 2024 that carried promo code BTB15, and the line-
+      level discount dollars on those orders (quantity x unit price x discount pct).
     split: dev
+    status: confirmed
     provenance: {source: context/ground_truth/events.md, context_seeds: [marketing-promotion-grain.seed.yaml]}
 
   - id: mkt_category_margin_2025
@@ -129,7 +145,12 @@ questions:
       GROUP BY category
       ORDER BY category
     context_required: []
+    intent: >
+      Line revenue, gross margin and margin % per product category over every 2025
+      consumer order line on eligible orders (fct_order_lines, all consumer channels,
+      not d2c only).
     split: dev
+    status: confirmed
     provenance: {source: bi/ad-hoc/07_category_gross_margin_by_year.sql, context_seeds: [marketing-margin-scope.seed.yaml, consumer-lines-scope.seed.yaml]}
 
   - id: mkt_paper_order_gmv_2025
@@ -154,5 +175,9 @@ questions:
       matching line. Summing line_amount answers "paper revenue", not the GMV of
       orders containing paper.
     context_required: [dbt:models/marts/_marts.yml]
+    intent: >
+      The summed gross amount of 2025 orders containing at least one paper line, each
+      order counted once (not paper line revenue).
     split: dev
+    status: confirmed
     provenance: {source: authored, context_seeds: []}
