@@ -36,7 +36,7 @@ questions:
       of platforms.
     context_required: [acf:domains/marketing/]
     split: dev
-    provenance: {source: bi/ad-hoc/09_cac_reported_vs_attributed.sql}
+    provenance: {source: bi/ad-hoc/09_cac_reported_vs_attributed.sql, context_seeds: [marketing-cac-denominator.seed.yaml, marketing-new-d2c.seed.yaml, marketing-cac-timestamp-tie.seed.yaml]}
 
   - id: mkt_new_d2c_customers_q1_2026
     tier: descriptive
@@ -60,7 +60,7 @@ questions:
       inflated. The attributed count is first-ever d2c orders.
     context_required: [acf:domains/marketing/]
     split: dev
-    provenance: {source: bi/ad-hoc/09_cac_reported_vs_attributed.sql}
+    provenance: {source: bi/ad-hoc/09_cac_reported_vs_attributed.sql, context_seeds: [marketing-new-d2c.seed.yaml, marketing-first-date-row-count.seed.yaml, marketing-cac-denominator.seed.yaml]}
 
   - id: mkt_ad_spend_by_platform_2025
     tier: descriptive
@@ -80,7 +80,7 @@ questions:
       ORDER BY platform
     context_required: []
     split: dev
-    provenance: {source: context/ground_truth/marketing_dashboard.md}
+    provenance: {source: context/ground_truth/marketing_dashboard.md, context_seeds: []}
 
   - id: mkt_btb15_usage_2024
     tier: descriptive
@@ -107,7 +107,7 @@ questions:
         (SELECT ROUND(SUM(gross_amount), 2) FROM promo) AS promo_gmv
     context_required: []
     split: dev
-    provenance: {source: context/ground_truth/events.md}
+    provenance: {source: context/ground_truth/events.md, context_seeds: [marketing-promotion-grain.seed.yaml]}
 
   - id: mkt_category_margin_2025
     tier: descriptive
@@ -130,7 +130,7 @@ questions:
       ORDER BY category
     context_required: []
     split: dev
-    provenance: {source: bi/ad-hoc/07_category_gross_margin_by_year.sql, context_seed: consumer-lines-scope.seed.yaml}
+    provenance: {source: bi/ad-hoc/07_category_gross_margin_by_year.sql, context_seeds: [marketing-margin-scope.seed.yaml, consumer-lines-scope.seed.yaml]}
 
   - id: mkt_paper_order_gmv_2025
     tier: descriptive
@@ -155,4 +155,4 @@ questions:
       orders containing paper.
     context_required: [dbt:models/marts/_marts.yml]
     split: dev
-    provenance: {source: authored}
+    provenance: {source: authored, context_seeds: []}

@@ -41,7 +41,7 @@ questions:
       unresolved identity quality reported separately.
     context_required: [shorelane:context/guides/customer_identity.md, shorelane:context/semantic/customer_identity.view.lkml, acf:domains/customers/]
     split: dev
-    provenance: {source: evals/questions.yaml#identity_customer_count_2025, context_seed: source-native-customer-id.seed.yaml}
+    provenance: {source: evals/questions.yaml#identity_customer_count_2025, context_seeds: [source-native-customer-id.seed.yaml, customer-identity-health-scope.seed.yaml, customer-profile-eligibility.seed.yaml, customer-unresolved-alias.seed.yaml]}
 
   - id: id_pre_migration_shopify
     tier: descriptive
@@ -75,7 +75,7 @@ questions:
       the gap; returning only the missing ones reverses the question.
     context_required: [shorelane:context/guides/customer_identity.md, acf:domains/customers/]
     split: dev
-    provenance: {source: evals/questions.yaml#identity_pre_migration_shopify}
+    provenance: {source: evals/questions.yaml#identity_pre_migration_shopify, context_seeds: [customer-unresolved-alias.seed.yaml, source-native-customer-id.seed.yaml]}
 
   - id: id_multi_source_gmv_2024
     tier: descriptive
@@ -120,7 +120,7 @@ questions:
       customers before filtering order facts, and keep test and internal accounts out.
     context_required: [shorelane:context/guides/customer_identity.md, shorelane:context/semantic/customer_identity.view.lkml, acf:domains/customers/]
     split: dev
-    provenance: {source: evals/questions.yaml#identity_multi_source_gmv_2024, context_seed: source-native-customer-id.seed.yaml}
+    provenance: {source: evals/questions.yaml#identity_multi_source_gmv_2024, context_seeds: [source-native-customer-id.seed.yaml, customer-source-coverage.seed.yaml]}
 
   - id: cust_current_customers_2025
     tier: descriptive
@@ -144,7 +144,7 @@ questions:
       (the customers dashboard does).
     context_required: [shorelane:context/metrics/customers.yml, acf:domains/customers/]
     split: dev
-    provenance: {source: context/ground_truth/customers_dashboard.md, context_seed: current-customers.seed.yaml}
+    provenance: {source: context/ground_truth/customers_dashboard.md, context_seeds: [current-customers.seed.yaml, customers-current-hygiene-correction.seed.yaml, customers-dashboard-hygiene.seed.yaml]}
 
   - id: cust_new_customers_q2_2026
     tier: descriptive
@@ -171,7 +171,7 @@ questions:
       channel.
     context_required: [shorelane:context/metrics/customers.yml, acf:domains/customers/]
     split: dev
-    provenance: {source: shorelane-analytics-context/evals/seeds/new-customers.seed.yaml, context_seed: new-customers.seed.yaml}
+    provenance: {source: shorelane-analytics-context/evals/seeds/new-customers.seed.yaml, context_seeds: [new-customers.seed.yaml, customers-new-hygiene-correction.seed.yaml]}
 
   - id: cust_multi_channel_2022
     tier: descriptive
@@ -197,4 +197,4 @@ questions:
       who ordered before and after the rename looks like a two-channel customer.
     context_required: [shorelane:context/metrics/customers.yml, shorelane:context/metrics/revenue.yml, acf:domains/customers/]
     split: dev
-    provenance: {source: shorelane-analytics-context/evals/seeds/multi-channel-customers.seed.yaml, context_seed: multi-channel-customers.seed.yaml}
+    provenance: {source: shorelane-analytics-context/evals/seeds/multi-channel-customers.seed.yaml, context_seeds: [multi-channel-customers.seed.yaml, customers-multi-channel-hygiene-correction.seed.yaml]}
