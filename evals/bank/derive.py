@@ -259,6 +259,51 @@ def recognized_by_channel(t: Tables, *, start: str, end: str) -> Derived:
     )
 
 
+@deriver
+def recognized_by_channel_by_quarter(t: Tables, *, start: str, end: str, as_of: str) -> Derived:
+    """Recognized revenue per calendar quarter, split by the canonical channel of
+    the originating order, with each channel's share of the quarter (the mix).
+    start/end bound complete quarters. Wrong paths: order-date net_amount by
+    channel (billed upfront, so subscription renewals make the mix lurch), GMV by
+    channel (marketplace at gross instead of take), and a window rolled forward
+    to include the partial quarter containing as_of."""
+    o = orders(t)
+    rec = t["app_db__revenue_recognition"].merge(o[["order_id", "channel"]], on="order_id", how="inner")
+
+    def split(lo, hi):
+        rows = []
+        for q in pd.period_range(lo, hi, freq="Q"):
+            qs, qe = q.start_time.strftime("%Y-%m-%d"), q.end_time.strftime("%Y-%m-%d")
+            r = rec[_between(rec.recognition_date, qs, qe)].groupby("channel").amount.sum()
+            w = o[_between(o.order_date, qs, qe)]
+            net, gross = w.groupby("channel").net_amount.sum(), w.groupby("channel").gross_amount.sum()
+            for c in sorted(set(r.index) | set(net.index)):
+                rows.append((str(q), c, r.get(c, 0.0), net.get(c, 0.0), gross.get(c, 0.0)))
+        df = pd.DataFrame(rows, columns=["quarter", "channel", "recognized", "net", "gross"])
+        for m in ("recognized", "net", "gross"):
+            df[f"{m}_share"] = df[m] / df.groupby("quarter")[m].transform("sum")
+        return df
+
+    df = split(_ts(start), _ts(end))
+    n_q = len(pd.period_range(start, end, freq="Q"))
+    cur_q = _ts(as_of).to_period("Q")
+    rolled = split((cur_q - (n_q - 1)).start_time, _ts(as_of))
+
+    silent = {}
+    for r in df.itertuples():
+        silent[f"order_date_net_amount_{r.quarter}_{r.channel}"] = _money(r.net)
+        silent[f"order_date_net_share_{r.quarter}_{r.channel}"] = _ratio(r.net_share)
+        silent[f"gmv_share_{r.quarter}_{r.channel}"] = _ratio(r.gross_share)
+    for r in rolled[rolled.quarter == str(cur_q)].itertuples():
+        silent[f"partial_quarter_{r.quarter}_{r.channel}"] = _money(r.recognized)
+
+    return Derived(
+        columns=["quarter", "channel", "recognized_revenue", "share_of_quarter"],
+        rows=[[r.quarter, r.channel, _money(r.recognized), _ratio(r.recognized_share)] for r in df.itertuples()],
+        silent_fail=silent,
+    )
+
+
 # --------------------------------------------------------------------------- identity
 
 @deriver
