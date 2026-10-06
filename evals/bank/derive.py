@@ -446,6 +446,53 @@ def churn_by_segment_quarter(t: Tables, *, start: str, end: str) -> Derived:
 
 
 @deriver
+def churned_acv_recovery(t: Tables, *, segment: str, start: str, end: str, as_of: str) -> Derived:
+    """ACV of a segment's terms that churned with term end in the window (a year of
+    subscription revenue lost), and whether the segment's book earned it back: active
+    ACV the day before the window, at its end, and the first quarter end by `as_of`
+    where active ACV is back at or above the pre-window level. Wrong paths: every
+    segment's churn, only the excess over the prior year's churn rate, and the
+    window started a month early."""
+    s = subscription_terms(t)
+    seg = s[s.segment == segment]
+    decided = seg[_between(seg.term_end, start, end) & seg.status.isin(["renewed", "churned"])]
+    churned = decided[decided.status == "churned"]
+
+    before = (_ts(start) - pd.Timedelta(days=1)).strftime("%Y-%m-%d")
+    acv_before = seg.pipe(_active_at, before).acv.sum()
+    recovered_at = None
+    for qe in pd.date_range(_ts(end), _ts(as_of), freq="QE"):
+        if seg.pipe(_active_at, qe.strftime("%Y-%m-%d")).acv.sum() >= acv_before:
+            recovered_at = qe.strftime("%Y-%m-%d")
+            break
+
+    # Wrong path inputs.
+    all_decided = s[_between(s.term_end, start, end) & s.status.isin(["renewed", "churned"])]
+    year_start = (_ts(start) - pd.DateOffset(years=1)).strftime("%Y-%m-%d")
+    prior = seg[_between(seg.term_end, year_start, before) & seg.status.isin(["renewed", "churned"])]
+    prior_rate = prior.loc[prior.status == "churned", "acv"].sum() / prior.acv.sum()
+    month_early = (_ts(start) - pd.DateOffset(months=1)).strftime("%Y-%m-%d")
+    early = seg[_between(seg.term_end, month_early, end) & (seg.status == "churned")]
+
+    return Derived(
+        value=_money(churned.acv.sum()),
+        components={
+            "churned_terms": int(len(churned)),
+            "terms_decided": int(len(decided)),
+            "acv_active_before": _money(acv_before),
+            "acv_active_at_end": _money(seg.pipe(_active_at, end).acv.sum()),
+            "recovered_at": recovered_at,
+            "prior_year_acv_churn_rate": _ratio(prior_rate),
+        },
+        silent_fail={
+            "all_segments": _money(all_decided.loc[all_decided.status == "churned", "acv"].sum()),
+            "excess_over_prior_year_rate": _money(churned.acv.sum() - prior_rate * decided.acv.sum()),
+            "window_one_month_early": _money(early.acv.sum()),
+        },
+    )
+
+
+@deriver
 def avg_price_per_seat_active(t: Tables, *, at: str, plan_id: str) -> Derived:
     """Seat-weighted price actually paid on a plan's active terms at `at`.
     Wrong path: the plan's current catalog price (dim_plans)."""
