@@ -15,3 +15,6 @@ dbt/bi/
 demo/output/
 .claude/
 .DS_Store
+
+# exported ACF eval seeds (make bank-export); derived, carry graded answers
+build/bank-seeds/
