@@ -46,6 +46,7 @@ test: # run every contract check (what CI runs)
 	python tests/check_bench_modes.py
 	python tests/check_bench_golds.py
 	python tests/check_seed_export.py
+	python tests/check_qa_record.py
 
 bank: # re-derive the benchmark question bank (evals/bank/dev.yaml) from its specs
 	python evals/build_bank.py

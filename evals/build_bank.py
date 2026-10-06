@@ -26,11 +26,9 @@ from __future__ import annotations
 
 import argparse
 import difflib
-import hashlib
 import inspect
 import math
 import pathlib
-import re
 import sys
 from typing import Any
 
@@ -45,90 +43,13 @@ BANK_DIR = REPO_ROOT / "evals" / "bank"
 SPECS_DIR = BANK_DIR / "specs"
 MODES_PATH = REPO_ROOT / "bench" / "modes.yaml"
 
-TIERS = ("descriptive", "diagnostic", "unanswerable")
-TRAP_TAGS = (
-    "none",
-    "ambiguous_definition",
-    "definition_outside_schema",
-    "as_of_temporal",
-    "fanout_cardinality",
-    "unanswerable",
-)
-GOLD_KINDS = ("value", "result_set", "criteria", "refusal")
-SPLITS = ("dev", "holdout")
-UNITS = ("usd", "count", "ratio")
+# The record format (fields, enums, split rule) lives in evals/bank/qa_record.py,
+# a standalone copy-able verifier; this builder adds what needs the generators.
+from evals.bank.qa_record import SPLITS, assigned_split, validate_record  # noqa: E402
+
 # Parity between the two derivations (generators vs gold_sql), not the scorer's
 # answer tolerance: the runner compares agent answers at display rounding.
 TOLERANCE = {"usd": 0.005, "count": 0, "ratio": 0.0001}
-ID_RE = re.compile(r"^[a-z][a-z0-9_]*$")
-
-# Split assignment. A question's split is decided by its id, not by its author:
-# sha256(id) lands in dev for the lowest DEV_SHARE of the hash space, holdout for
-# the rest. Nobody chooses which questions the published score rests on, and
-# anyone can re-check the assignment. Pick the id BEFORE hashing it, for what the
-# question asks; re-rolling ids to steer a question into a split defeats the rule.
-DEV_SHARE = 0.40
-# Public before the rule was adopted (2026-09-29), so dev whatever their hash:
-# they cannot be holdout once published. Never add to this list.
-GRANDFATHERED_DEV = frozenset({
-    "cust_current_customers_2025",
-    "cust_multi_channel_2022",
-    "cust_new_customers_q2_2026",
-    "diag_aov_drop_2024_09",
-    "diag_consumer_orders_dip_2023_03",
-    "diag_enterprise_churn_2022_q4",
-    "diag_new_d2c_drop_2026_02",
-    "diag_subscription_starts_dip_2025",
-    "id_customer_count_2025",
-    "id_multi_source_gmv_2024",
-    "id_pre_migration_shopify",
-    "mkt_ad_spend_by_platform_2025",
-    "mkt_btb15_usage_2024",
-    "mkt_category_margin_2025",
-    "mkt_d2c_cac_h1_2026",
-    "mkt_new_d2c_customers_q1_2026",
-    "mkt_paper_order_gmv_2025",
-    "na_email_open_rate_btb",
-    "na_gift_card_revenue_2025",
-    "na_nps_q2_2026",
-    "na_revenue_september_2026",
-    "na_store_visits_2025",
-    "ops_open_tickets_2026_06_30",
-    "ops_shipments_in_transit_2026_06_30",
-    "ops_tickets_by_category_2025",
-    "rev_d2c_gmv_by_year",
-    "rev_five_measures_by_quarter_2025",
-    "rev_fy2025_gmv",
-    "rev_last_quarter",
-    "rev_marketplace_take_q2_2026",
-    "rev_orders_q2_2026",
-    "rev_q1_2024_collected",
-    "rev_q1_2024_marketing_persona",
-    "rev_q1_2024_unqualified",
-    "rev_q2_2026_net",
-    "rev_q4_2025_billed",
-    "rev_recognized_by_channel_2025",
-    "rev_ytd_growth_2026",
-    "sub_active_2025_12_31",
-    "sub_active_by_generation_2025_12_31",
-    "sub_churn_by_segment_2022",
-    "sub_growth_price_paid_2025",
-    "sub_new_subscriptions_2025",
-    "sub_renewal_rate_2025",
-})
-
-
-def assigned_split(qid: str) -> str:
-    """The split the hash rule assigns to a question id."""
-    if qid in GRANDFATHERED_DEV:
-        return "dev"
-    bucket = int(hashlib.sha256(qid.encode()).hexdigest(), 16) / 16 ** 64
-    return "dev" if bucket < DEV_SHARE else "holdout"
-SPEC_KEYS = {
-    "id", "tier", "trap_tag", "prompt", "persona", "pinned_scope", "gold", "gold_sql",
-    "trap", "context_required", "split", "provenance", "intent", "status",
-}
-STATUSES = ("draft", "confirmed")
 
 
 class SpecError(Exception):
@@ -160,89 +81,10 @@ def load_specs(specs_dir: pathlib.Path) -> list[dict]:
 # --------------------------------------------------------------------------- validation
 
 def validate_spec(q: dict, bench: dict, split: str) -> list[str]:
-    """Structural rules a spec must satisfy before anything is derived."""
-    errs = []
-    qid = q.get("id", "<missing id>")
-    extra = set(q) - SPEC_KEYS - {"domain", "_file"}
-    if extra:
-        errs.append(f"unknown keys {sorted(extra)}")
-    for key in ("id", "tier", "trap_tag", "prompt", "intent", "status", "gold", "split", "provenance"):
-        if key not in q:
-            errs.append(f"missing {key}")
-    if errs:
-        return [f"{qid}: {e}" for e in errs]
-    if not ID_RE.match(q["id"]):
-        errs.append("id must be snake_case")
-    if q["tier"] not in TIERS:
-        errs.append(f"tier {q['tier']!r} not in {TIERS}")
-    if q["trap_tag"] not in TRAP_TAGS:
-        errs.append(f"trap_tag {q['trap_tag']!r} not in {TRAP_TAGS}")
-    if not isinstance(q["intent"], str) or not q["intent"].strip():
-        errs.append("intent must say, in words, what the gold measures")
-    if q["status"] not in STATUSES:
-        errs.append(f"status {q['status']!r} not in {STATUSES}")
-    if q["split"] != split:
-        errs.append(f"split {q['split']!r} does not match this build ({split!r})")
-    if ID_RE.match(q["id"]) and q["split"] != assigned_split(q["id"]):
-        errs.append(f"the hash rule assigns this id to {assigned_split(q['id'])!r}, not {q['split']!r} "
-                    "(python evals/build_bank.py --which-split <id>)")
-    gold = q["gold"]
-    kind = gold.get("kind")
-    if kind not in GOLD_KINDS:
-        errs.append(f"gold.kind {kind!r} not in {GOLD_KINDS}")
-    # tier, trap tag and gold kind must tell one story
-    if (q["tier"] == "unanswerable") != (q["trap_tag"] == "unanswerable"):
-        errs.append("tier unanswerable <=> trap_tag unanswerable")
-    if (q["tier"] == "unanswerable") != (kind == "refusal"):
-        errs.append("tier unanswerable <=> gold.kind refusal")
-    if (q["tier"] == "diagnostic") != (kind == "criteria"):
-        errs.append("tier diagnostic <=> gold.kind criteria")
-    if kind in ("value", "result_set"):
-        if not q.get("gold_sql"):
-            errs.append("value and result_set golds need gold_sql (the second derivation)")
-        elif "{bench}" not in q["gold_sql"]:
-            errs.append("gold_sql must address tables as `{bench}.<table>`")
-        if kind == "value" and gold.get("unit") not in UNITS:
-            errs.append(f"gold.unit must be one of {UNITS}")
-        if kind == "result_set":
-            units = gold.get("units") or {}
-            if not units or any(u not in UNITS for u in units.values()):
-                errs.append("result_set gold needs units: {column: usd|count|ratio} for numeric columns")
-    if kind == "criteria":
-        if not gold.get("must"):
-            errs.append("criteria gold needs a non-empty `must` list")
-    if kind == "refusal":
-        if not gold.get("reason"):
-            errs.append("refusal gold needs a reason")
-    if q["trap_tag"] != "none" and not (q.get("trap") or "").strip():
-        errs.append("a trapped question documents its plausible-wrong path in `trap`")
-    if q["trap_tag"] not in ("none", "unanswerable") and not q.get("context_required"):
-        errs.append("a trapped question names the context that resolves it (context_required)")
-    for ref in q.get("context_required") or []:
-        if not re.match(r"^(shorelane|acf|dbt):", ref):
-            errs.append(f"context_required entry {ref!r} must be prefixed shorelane:, acf: or dbt:")
-    scope = q.get("pinned_scope") or {}
-    window = scope.get("window")
-    if window:
-        start, end = str(window["start"]), str(window["end"])
-        if not start <= end:
-            errs.append("window start after end")
-        if end > bench["as_of"]:
-            errs.append(f"window ends {end}, after the bench as_of {bench['as_of']}")
-    if scope.get("at") and str(scope["at"]) > bench["as_of"]:
-        errs.append(f"snapshot date {scope['at']} is after the bench as_of {bench['as_of']}")
-    prov = q["provenance"]
-    if not isinstance(prov, dict) or not prov.get("source"):
-        errs.append("provenance.source is required")
-    elif "context_seed" in prov:
-        errs.append("provenance.context_seed is replaced by the list provenance.context_seeds")
-    else:
-        seeds = prov.get("context_seeds")
-        if not isinstance(seeds, list) or not all(
-                isinstance(s, str) and s.endswith(".seed.yaml") and "/" not in s for s in seeds):
-            errs.append("provenance.context_seeds must be a list of analytics-context seed file names "
-                        "(`[]` once checked against the pinned context and none overlaps)")
-    return [f"{qid}: {e}" for e in errs]
+    """Structural rules a spec must satisfy before anything is derived (qa_record.py)."""
+    from evals.bank.derive import DERIVERS
+
+    return validate_record(q, as_of=bench["as_of"], split=split, derive_fns=DERIVERS)
 
 
 # --------------------------------------------------------------------------- derivation

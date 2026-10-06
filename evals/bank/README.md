@@ -10,6 +10,7 @@ every graded number derived from the generators.
 | `derive.py` | the gold derivations the specs name (generic, parameterized) | people |
 | `dev.yaml` | the dev split with golds, silent-fail values and evidence filled in | `evals/build_bank.py` |
 | `local_warehouse.py` | DuckDB replica of the bench warehouse for checking `gold_sql` offline | people |
+| `qa_record.py` | the record format and its verifier: standalone, copy it into other repos | people |
 | `seed_overlap.py` | checks `provenance.context_seeds` against the analytics-context seeds | people |
 | `export_seeds.py` | one-way export of the bank as ACF eval seeds | people |
 
@@ -190,4 +191,34 @@ The export carries graded answers, and with `--values` the graded numbers too. I
 refuses to write under any directory holding a `context.config.yaml`, because seeds
 committed to the analytics-context repo would leak into the benchmark workspaces.
 Never export the holdout bank anywhere public.
+
+## Authoring questions in another repo
+
+`evals/bank/qa_record.py` is the single definition of a bank record (one spec):
+every field, the allowed values, the tier/trap/gold rules and the hash split rule.
+`build_bank.py` validates every spec through it, so a record that passes
+`qa_record.py` passes the bank's format rules here. It needs only Python 3.10+ and
+PyYAML, so it can be copied as is into a repo where questions are drafted:
+
+```
+python qa_record.py check records/                            # verify record files
+python qa_record.py check records/ --derive-fns ../shorelane/evals/bank/derive.py
+python qa_record.py which-split <id>                          # dev or holdout, by hash
+python qa_record.py export records/ --out ../shorelane/evals/bank/specs --split dev
+python qa_record.py export records/ --out ../shorelane-bench/bank/specs --split holdout
+```
+
+A record file holds one record, a list, or a spec file. A record outside a spec file
+names its own `domain`. `export` appends records to `<domain>.yaml` in the target
+specs directory, leaving existing records and comments untouched. It refuses an id
+that is already there, and it validates the new records together with the ones in
+place. A copy is current when its `RECORD_FORMAT` matches this one, which changes
+whenever a rule does.
+
+The format is not the whole check. After a record lands, `make bank` runs its
+derivation (an unknown `derive.fn` needs a new function in `derive.py` first),
+rejects a gold that reads past the as_of or a trap whose silent-fail value equals
+the gold, and `tests/check_bench_golds.py --sql` reproduces the gold with `gold_sql`.
+Export dev records only to this repo, and holdout records only to shorelane-bench:
+the hash rule decides which split a record belongs to.
 
