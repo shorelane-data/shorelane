@@ -236,6 +236,50 @@ def d2c_gmv_by_year(t: Tables, *, start: str, end: str) -> Derived:
 
 
 @deriver
+def d2c_orders_by_year(t: Tables, *, years: list[int]) -> Derived:
+    """Eligible direct-to-consumer orders by selected calendar years.
+
+    Wrong paths: filtering only the historical 'direct' label or only
+    the newer 'd2c' label instead of using the canonical channel.
+    """
+    if not years or any(type(y) is not int or not 1 <= y <= 2025 for y in years):
+        raise ValueError(
+            "years must contain full calendar years within the "
+            "2026-08-31 benchmark cutoff (integers from 1 through 2025)"
+        )
+
+    o = orders(t)
+    o = o[o.order_date.dt.year.isin(years)]
+    rows = []
+    silent = {}
+
+    for year, w in o.groupby(o.order_date.dt.year, sort=True):
+        year = int(year)
+        canonical = int(w.loc[w.channel == "d2c", "order_id"].nunique())
+        raw_direct = int(w.loc[w.channel_raw == "direct", "order_id"].nunique())
+        raw_d2c = int(w.loc[w.channel_raw == "d2c", "order_id"].nunique())
+
+        rows.append([year, canonical, raw_direct, raw_d2c])
+
+        # Record only wrong-path counts that differ from the correct count.
+        if raw_direct != canonical:
+            silent[f"raw_label_direct_orders_{year}"] = raw_direct
+        if raw_d2c != canonical:
+            silent[f"raw_label_d2c_orders_{year}"] = raw_d2c
+
+    return Derived(
+        columns=[
+            "year",
+            "direct_channel_orders",
+            "raw_direct_orders",
+            "raw_d2c_orders",
+        ],
+        rows=rows,
+        silent_fail=silent,
+    )
+
+
+@deriver
 def recognized_by_channel(t: Tables, *, start: str, end: str) -> Derived:
     """Recognized revenue split by the canonical channel of the originating
     order. Wrong paths: order-date net_amount by channel (the fct_orders
