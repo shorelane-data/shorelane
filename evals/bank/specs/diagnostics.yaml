@@ -30,7 +30,7 @@ questions:
       seasonality.
     context_required: []
     split: dev
-    provenance: {source: context/ground_truth/events.md#supplier_outage_2023_03}
+    provenance: {source: context/ground_truth/events.md#supplier_outage_2023_03, context_seeds: []}
 
   - id: diag_aov_drop_2024_09
     tier: diagnostic
@@ -57,7 +57,7 @@ questions:
       the magnitude.
     context_required: []
     split: dev
-    provenance: {source: context/ground_truth/events.md#promo_back_to_business_2024_09}
+    provenance: {source: context/ground_truth/events.md#promo_back_to_business_2024_09, context_seeds: [marketing-consumer-aov.seed.yaml, marketing-promotion-grain.seed.yaml, marketing-promotion-names.seed.yaml]}
 
   - id: diag_subscription_starts_dip_2025
     tier: diagnostic
@@ -87,7 +87,7 @@ questions:
       Counting all terms started (renewals included) blurs the dip.
     context_required: [acf:domains/subscriptions/]
     split: dev
-    provenance: {source: context/ground_truth/events.md#sub_price_increase_2025_05}
+    provenance: {source: context/ground_truth/events.md#sub_price_increase_2025_05, context_seeds: [subscriptions-price-change.seed.yaml, subscription-starts.seed.yaml, subscriptions-new-seat-weighting.seed.yaml, grandfathered-plans.seed.yaml]}
 
   - id: diag_enterprise_churn_2022_q4
     tier: diagnostic
@@ -116,7 +116,7 @@ questions:
       subscription customers.
     context_required: [shorelane:context/guides/customer_identity.md, acf:domains/subscriptions/]
     split: dev
-    provenance: {source: context/ground_truth/events.md#enterprise_churn_2022_q4, related: bi/ad-hoc/10_billing_tickets_vs_enterprise_churn_2022.sql}
+    provenance: {source: context/ground_truth/events.md#enterprise_churn_2022_q4, related: bi/ad-hoc/10_billing_tickets_vs_enterprise_churn_2022.sql, context_seeds: [subscriptions-billing-incident.seed.yaml, renewal-rate.seed.yaml]}
 
   - id: diag_new_d2c_drop_2026_02
     tier: diagnostic
@@ -142,4 +142,4 @@ questions:
       the day totals in fct_marketing_spend repeat per platform row.
     context_required: [acf:domains/marketing/]
     split: dev
-    provenance: {source: context/ground_truth/events.md#ad_spend_cut_2026_02}
+    provenance: {source: context/ground_truth/events.md#ad_spend_cut_2026_02, context_seeds: [marketing-paid-media-cut.seed.yaml, marketing-new-d2c.seed.yaml]}

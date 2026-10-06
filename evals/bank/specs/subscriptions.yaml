@@ -23,7 +23,7 @@ questions:
       generation; seats and terms are different units.
     context_required: [shorelane:context/metrics/customers.yml, acf:domains/subscriptions/]
     split: dev
-    provenance: {source: context/ground_truth/subscriptions_dashboard.md, context_seed: active-subscribers.seed.yaml}
+    provenance: {source: context/ground_truth/subscriptions_dashboard.md, context_seeds: [active-subscribers.seed.yaml, current-subscribers.seed.yaml, subscriptions-stock-grain.seed.yaml, subscriptions-term-grain.seed.yaml, grandfathered-plans.seed.yaml]}
 
   - id: sub_active_by_generation_2025_12_31
     tier: descriptive
@@ -48,7 +48,7 @@ questions:
       is_current plans reports only generation 3.
     context_required: [acf:domains/subscriptions/]
     split: dev
-    provenance: {source: bi/ad-hoc/05_active_subscribers_by_plan_generation.sql, context_seed: grandfathered-plans.seed.yaml}
+    provenance: {source: bi/ad-hoc/05_active_subscribers_by_plan_generation.sql, context_seeds: [grandfathered-plans.seed.yaml, subscriptions-stock-grain.seed.yaml, subscriptions-grandfathered-asof.seed.yaml, subscriptions-locked-price.seed.yaml]}
 
   - id: sub_renewal_rate_2025
     tier: descriptive
@@ -74,7 +74,7 @@ questions:
       volume is renewals".
     context_required: [acf:domains/subscriptions/]
     split: dev
-    provenance: {source: context/ground_truth/subscriptions_dashboard.md, context_seed: renewal-rate.seed.yaml}
+    provenance: {source: context/ground_truth/subscriptions_dashboard.md, context_seeds: [renewal-rate.seed.yaml, subscriptions-renewal-cohort.seed.yaml]}
 
   - id: sub_new_subscriptions_2025
     tier: descriptive
@@ -96,7 +96,7 @@ questions:
       counting all terms started includes renewals.
     context_required: [acf:domains/subscriptions/]
     split: dev
-    provenance: {source: context/ground_truth/subscriptions_dashboard.md, context_seed: subscription-starts.seed.yaml}
+    provenance: {source: context/ground_truth/subscriptions_dashboard.md, context_seeds: [subscription-starts.seed.yaml, subscriptions-term-grain.seed.yaml]}
 
   - id: sub_churn_by_segment_2022
     tier: descriptive
@@ -123,7 +123,7 @@ questions:
       ORDER BY quarter, segment
     context_required: []
     split: dev
-    provenance: {source: bi/ad-hoc/06_renewal_churn_by_segment_and_quarter.sql}
+    provenance: {source: bi/ad-hoc/06_renewal_churn_by_segment_and_quarter.sql, context_seeds: [renewal-rate.seed.yaml, subscriptions-renewal-cohort.seed.yaml, subscriptions-partial-quarter.seed.yaml]}
 
   - id: sub_growth_price_paid_2025
     tier: descriptive
@@ -146,4 +146,4 @@ questions:
       (dim_plans) overstates what the active base pays.
     context_required: [acf:domains/subscriptions/]
     split: dev
-    provenance: {source: context/ground_truth/events.md, context_seed: grandfathered-plans.seed.yaml}
+    provenance: {source: context/ground_truth/events.md, context_seeds: [grandfathered-plans.seed.yaml, subscriptions-locked-price.seed.yaml, subscriptions-price-change.seed.yaml]}

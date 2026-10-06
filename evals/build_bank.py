@@ -229,6 +229,14 @@ def validate_spec(q: dict, bench: dict, split: str) -> list[str]:
     prov = q["provenance"]
     if not isinstance(prov, dict) or not prov.get("source"):
         errs.append("provenance.source is required")
+    elif "context_seed" in prov:
+        errs.append("provenance.context_seed is replaced by the list provenance.context_seeds")
+    else:
+        seeds = prov.get("context_seeds")
+        if not isinstance(seeds, list) or not all(
+                isinstance(s, str) and s.endswith(".seed.yaml") and "/" not in s for s in seeds):
+            errs.append("provenance.context_seeds must be a list of analytics-context seed file names "
+                        "(`[]` once checked against the pinned context and none overlaps)")
     return [f"{qid}: {e}" for e in errs]
 
 

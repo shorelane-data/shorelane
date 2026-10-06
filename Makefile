@@ -1,6 +1,6 @@
 # Shorelane build pipeline. `make help` for targets.
 
-.PHONY: help install install-bq install-redshift generate verify ground-truth test bank bank-sql bench-check load-bq load-redshift dbt manifest manifest-fetch site biz-dashboard validate-dashboard clean
+.PHONY: help install install-bq install-redshift generate verify ground-truth test bank bank-seeds bank-sql bench-check load-bq load-redshift dbt manifest manifest-fetch site biz-dashboard validate-dashboard clean
 
 help:
 	@grep -E '^[a-zA-Z_-]+:.*?# .*$$' $(MAKEFILE_LIST) | sort | \
@@ -48,6 +48,9 @@ test: # run every contract check (what CI runs)
 
 bank: # re-derive the benchmark question bank (evals/bank/dev.yaml) from its specs
 	python evals/build_bank.py
+
+bank-seeds: # check the bank's analytics-context seed overlap (CONTEXT=../shorelane-analytics-context at the pinned commit)
+	python evals/bank/seed_overlap.py --context $(or $(CONTEXT),../shorelane-analytics-context)
 
 bank-sql: # run every gold_sql on a local DuckDB replica of the bench warehouse (DBT=../shorelane-dbt; needs evals/bank/requirements-sql.txt)
 	python tests/check_bench_golds.py --sql local --dbt $(or $(DBT),../shorelane-dbt)

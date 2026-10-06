@@ -23,7 +23,7 @@ questions:
       answers "open now"; counting tickets created in June answers "opened".
     context_required: [dbt:models/staging/_staging.yml]
     split: dev
-    provenance: {source: authored}
+    provenance: {source: authored, context_seeds: []}
 
   - id: ops_shipments_in_transit_2026_06_30
     tier: descriptive
@@ -45,7 +45,7 @@ questions:
       June 30, so received_date has to be compared with that date.
     context_required: [dbt:models/staging/_staging.yml]
     split: dev
-    provenance: {source: authored}
+    provenance: {source: authored, context_seeds: []}
 
   - id: ops_tickets_by_category_2025
     tier: descriptive
@@ -65,4 +65,4 @@ questions:
       ORDER BY category
     context_required: []
     split: dev
-    provenance: {source: authored}
+    provenance: {source: authored, context_seeds: []}

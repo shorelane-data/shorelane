@@ -60,7 +60,11 @@ questions:
   split: dev
   provenance:
     source: evals/questions.yaml#identity_customer_count_2025
-    context_seed: source-native-customer-id.seed.yaml
+    context_seeds:
+    - source-native-customer-id.seed.yaml
+    - customer-identity-health-scope.seed.yaml
+    - customer-profile-eligibility.seed.yaml
+    - customer-unresolved-alias.seed.yaml
 - id: id_pre_migration_shopify
   domain: customers
   tier: descriptive
@@ -97,6 +101,9 @@ questions:
   split: dev
   provenance:
     source: evals/questions.yaml#identity_pre_migration_shopify
+    context_seeds:
+    - customer-unresolved-alias.seed.yaml
+    - source-native-customer-id.seed.yaml
 - id: id_multi_source_gmv_2024
   domain: customers
   tier: descriptive
@@ -150,7 +157,9 @@ questions:
   split: dev
   provenance:
     source: evals/questions.yaml#identity_multi_source_gmv_2024
-    context_seed: source-native-customer-id.seed.yaml
+    context_seeds:
+    - source-native-customer-id.seed.yaml
+    - customer-source-coverage.seed.yaml
 - id: cust_current_customers_2025
   domain: customers
   tier: descriptive
@@ -185,7 +194,10 @@ questions:
   split: dev
   provenance:
     source: context/ground_truth/customers_dashboard.md
-    context_seed: current-customers.seed.yaml
+    context_seeds:
+    - current-customers.seed.yaml
+    - customers-current-hygiene-correction.seed.yaml
+    - customers-dashboard-hygiene.seed.yaml
 - id: cust_new_customers_q2_2026
   domain: customers
   tier: descriptive
@@ -222,7 +234,9 @@ questions:
   split: dev
   provenance:
     source: shorelane-analytics-context/evals/seeds/new-customers.seed.yaml
-    context_seed: new-customers.seed.yaml
+    context_seeds:
+    - new-customers.seed.yaml
+    - customers-new-hygiene-correction.seed.yaml
 - id: cust_multi_channel_2022
   domain: customers
   tier: descriptive
@@ -259,7 +273,9 @@ questions:
   split: dev
   provenance:
     source: shorelane-analytics-context/evals/seeds/multi-channel-customers.seed.yaml
-    context_seed: multi-channel-customers.seed.yaml
+    context_seeds:
+    - multi-channel-customers.seed.yaml
+    - customers-multi-channel-hygiene-correction.seed.yaml
 - id: diag_consumer_orders_dip_2023_03
   domain: diagnostics
   tier: diagnostic
@@ -305,6 +321,7 @@ questions:
   split: dev
   provenance:
     source: context/ground_truth/events.md#supplier_outage_2023_03
+    context_seeds: []
 - id: diag_aov_drop_2024_09
   domain: diagnostics
   tier: diagnostic
@@ -358,6 +375,10 @@ questions:
   split: dev
   provenance:
     source: context/ground_truth/events.md#promo_back_to_business_2024_09
+    context_seeds:
+    - marketing-consumer-aov.seed.yaml
+    - marketing-promotion-grain.seed.yaml
+    - marketing-promotion-names.seed.yaml
 - id: diag_subscription_starts_dip_2025
   domain: diagnostics
   tier: diagnostic
@@ -437,6 +458,11 @@ questions:
   split: dev
   provenance:
     source: context/ground_truth/events.md#sub_price_increase_2025_05
+    context_seeds:
+    - subscriptions-price-change.seed.yaml
+    - subscription-starts.seed.yaml
+    - subscriptions-new-seat-weighting.seed.yaml
+    - grandfathered-plans.seed.yaml
 - id: diag_enterprise_churn_2022_q4
   domain: diagnostics
   tier: diagnostic
@@ -538,6 +564,9 @@ questions:
   provenance:
     source: context/ground_truth/events.md#enterprise_churn_2022_q4
     related: bi/ad-hoc/10_billing_tickets_vs_enterprise_churn_2022.sql
+    context_seeds:
+    - subscriptions-billing-incident.seed.yaml
+    - renewal-rate.seed.yaml
 - id: diag_new_d2c_drop_2026_02
   domain: diagnostics
   tier: diagnostic
@@ -596,6 +625,9 @@ questions:
   split: dev
   provenance:
     source: context/ground_truth/events.md#ad_spend_cut_2026_02
+    context_seeds:
+    - marketing-paid-media-cut.seed.yaml
+    - marketing-new-d2c.seed.yaml
 - id: mkt_d2c_cac_h1_2026
   domain: marketing
   tier: descriptive
@@ -643,6 +675,10 @@ questions:
   split: dev
   provenance:
     source: bi/ad-hoc/09_cac_reported_vs_attributed.sql
+    context_seeds:
+    - marketing-cac-denominator.seed.yaml
+    - marketing-new-d2c.seed.yaml
+    - marketing-cac-timestamp-tie.seed.yaml
 - id: mkt_new_d2c_customers_q1_2026
   domain: marketing
   tier: descriptive
@@ -675,6 +711,10 @@ questions:
   split: dev
   provenance:
     source: bi/ad-hoc/09_cac_reported_vs_attributed.sql
+    context_seeds:
+    - marketing-new-d2c.seed.yaml
+    - marketing-first-date-row-count.seed.yaml
+    - marketing-cac-denominator.seed.yaml
 - id: mkt_ad_spend_by_platform_2025
   domain: marketing
   tier: descriptive
@@ -712,6 +752,7 @@ questions:
   split: dev
   provenance:
     source: context/ground_truth/marketing_dashboard.md
+    context_seeds: []
 - id: mkt_btb15_usage_2024
   domain: marketing
   tier: descriptive
@@ -751,6 +792,8 @@ questions:
   split: dev
   provenance:
     source: context/ground_truth/events.md
+    context_seeds:
+    - marketing-promotion-grain.seed.yaml
 - id: mkt_category_margin_2025
   domain: marketing
   tier: descriptive
@@ -814,7 +857,9 @@ questions:
   split: dev
   provenance:
     source: bi/ad-hoc/07_category_gross_margin_by_year.sql
-    context_seed: consumer-lines-scope.seed.yaml
+    context_seeds:
+    - marketing-margin-scope.seed.yaml
+    - consumer-lines-scope.seed.yaml
 - id: mkt_paper_order_gmv_2025
   domain: marketing
   tier: descriptive
@@ -848,6 +893,7 @@ questions:
   split: dev
   provenance:
     source: authored
+    context_seeds: []
 - id: ops_open_tickets_2026_06_30
   domain: operations
   tier: descriptive
@@ -878,6 +924,7 @@ questions:
   split: dev
   provenance:
     source: authored
+    context_seeds: []
 - id: ops_shipments_in_transit_2026_06_30
   domain: operations
   tier: descriptive
@@ -906,6 +953,7 @@ questions:
   split: dev
   provenance:
     source: authored
+    context_seeds: []
 - id: ops_tickets_by_category_2025
   domain: operations
   tier: descriptive
@@ -949,6 +997,7 @@ questions:
   split: dev
   provenance:
     source: authored
+    context_seeds: []
 - id: rev_q1_2024_unqualified
   domain: revenue
   tier: descriptive
@@ -987,7 +1036,10 @@ questions:
   split: dev
   provenance:
     source: evals/questions.yaml#revenue_q1_2024_unqualified
-    context_seed: revenue.seed.yaml
+    context_seeds:
+    - revenue.seed.yaml
+    - recognized-revenue.seed.yaml
+    - revenue-fact-grain.seed.yaml
 - id: rev_q1_2024_marketing_persona
   domain: revenue
   tier: descriptive
@@ -1023,7 +1075,9 @@ questions:
   split: dev
   provenance:
     source: evals/questions.yaml#revenue_q1_2024_marketing
-    context_seed: revenue.seed.yaml
+    context_seeds:
+    - revenue.seed.yaml
+    - gmv.seed.yaml
 - id: rev_q1_2024_collected
   domain: revenue
   tier: descriptive
@@ -1059,7 +1113,9 @@ questions:
   split: dev
   provenance:
     source: evals/questions.yaml#revenue_q1_2024_cash
-    context_seed: collected-cash.seed.yaml
+    context_seeds:
+    - collected-cash.seed.yaml
+    - revenue-fact-grain.seed.yaml
 - id: rev_fy2025_gmv
   domain: revenue
   tier: descriptive
@@ -1090,6 +1146,9 @@ questions:
   split: dev
   provenance:
     source: evals/demo/cases.yaml#gmv_2025_fy
+    context_seeds:
+    - gmv.seed.yaml
+    - revenue-fact-grain.seed.yaml
 - id: rev_q2_2026_net
   domain: revenue
   tier: descriptive
@@ -1122,7 +1181,9 @@ questions:
   split: dev
   provenance:
     source: evals/demo/cases.yaml#net_revenue_2026_q2
-    context_seed: net-revenue.seed.yaml
+    context_seeds:
+    - net-revenue.seed.yaml
+    - revenue-fact-grain.seed.yaml
 - id: rev_q4_2025_billed
   domain: revenue
   tier: descriptive
@@ -1155,7 +1216,9 @@ questions:
   split: dev
   provenance:
     source: evals/demo/cases.yaml#billed_revenue_2025_q4
-    context_seed: billed-revenue.seed.yaml
+    context_seeds:
+    - billed-revenue.seed.yaml
+    - revenue-fact-grain.seed.yaml
 - id: rev_last_quarter
   domain: revenue
   tier: descriptive
@@ -1194,7 +1257,9 @@ questions:
   split: dev
   provenance:
     source: shorelane-analytics-context/evals/seeds/last-quarter.seed.yaml
-    context_seed: last-quarter.seed.yaml
+    context_seeds:
+    - last-quarter.seed.yaml
+    - revenue.seed.yaml
 - id: rev_ytd_growth_2026
   domain: revenue
   tier: descriptive
@@ -1237,7 +1302,9 @@ questions:
   split: dev
   provenance:
     source: shorelane-analytics-context/evals/seeds/revenue-period-completeness.seed.yaml
-    context_seed: revenue-period-completeness.seed.yaml
+    context_seeds:
+    - revenue-period-completeness.seed.yaml
+    - revenue.seed.yaml
 - id: rev_five_measures_by_quarter_2025
   domain: revenue
   tier: descriptive
@@ -1308,6 +1375,14 @@ questions:
   split: dev
   provenance:
     source: bi/ad-hoc/01_five_revenues_by_quarter.sql
+    context_seeds:
+    - revenue.seed.yaml
+    - revenue-fact-grain.seed.yaml
+    - recognized-revenue.seed.yaml
+    - gmv.seed.yaml
+    - net-revenue.seed.yaml
+    - billed-revenue.seed.yaml
+    - collected-cash.seed.yaml
 - id: rev_orders_q2_2026
   domain: revenue
   tier: descriptive
@@ -1338,7 +1413,9 @@ questions:
   split: dev
   provenance:
     source: shorelane-analytics-context/evals/seeds/eligible-order.seed.yaml
-    context_seed: eligible-order.seed.yaml
+    context_seeds:
+    - eligible-order.seed.yaml
+    - executive-order-hygiene-correction.seed.yaml
 - id: rev_marketplace_take_q2_2026
   domain: revenue
   tier: descriptive
@@ -1373,7 +1450,8 @@ questions:
   split: dev
   provenance:
     source: bi/ad-hoc/02_marketplace_take_rate_by_month.sql
-    context_seed: marketplace-earnings.seed.yaml
+    context_seeds:
+    - marketplace-earnings.seed.yaml
 - id: rev_d2c_gmv_by_year
   domain: revenue
   tier: descriptive
@@ -1427,7 +1505,9 @@ questions:
   split: dev
   provenance:
     source: bi/ad-hoc/03_d2c_by_year_raw_label_vs_canonical.sql
-    context_seed: canonical-channel.seed.yaml
+    context_seeds:
+    - canonical-channel.seed.yaml
+    - marketing-gmv-routing.seed.yaml
 - id: rev_recognized_by_channel_2025
   domain: revenue
   tier: descriptive
@@ -1476,7 +1556,9 @@ questions:
   split: dev
   provenance:
     source: shorelane-analytics-context/evals/seeds/revenue-channel-reconciliation.seed.yaml
-    context_seed: revenue-channel-reconciliation.seed.yaml
+    context_seeds:
+    - revenue-channel-reconciliation.seed.yaml
+    - recognized-revenue.seed.yaml
 - id: sub_active_2025_12_31
   domain: subscriptions
   tier: descriptive
@@ -1508,7 +1590,12 @@ questions:
   split: dev
   provenance:
     source: context/ground_truth/subscriptions_dashboard.md
-    context_seed: active-subscribers.seed.yaml
+    context_seeds:
+    - active-subscribers.seed.yaml
+    - current-subscribers.seed.yaml
+    - subscriptions-stock-grain.seed.yaml
+    - subscriptions-term-grain.seed.yaml
+    - grandfathered-plans.seed.yaml
 - id: sub_active_by_generation_2025_12_31
   domain: subscriptions
   tier: descriptive
@@ -1555,7 +1642,11 @@ questions:
   split: dev
   provenance:
     source: bi/ad-hoc/05_active_subscribers_by_plan_generation.sql
-    context_seed: grandfathered-plans.seed.yaml
+    context_seeds:
+    - grandfathered-plans.seed.yaml
+    - subscriptions-stock-grain.seed.yaml
+    - subscriptions-grandfathered-asof.seed.yaml
+    - subscriptions-locked-price.seed.yaml
 - id: sub_renewal_rate_2025
   domain: subscriptions
   tier: descriptive
@@ -1593,7 +1684,9 @@ questions:
   split: dev
   provenance:
     source: context/ground_truth/subscriptions_dashboard.md
-    context_seed: renewal-rate.seed.yaml
+    context_seeds:
+    - renewal-rate.seed.yaml
+    - subscriptions-renewal-cohort.seed.yaml
 - id: sub_new_subscriptions_2025
   domain: subscriptions
   tier: descriptive
@@ -1626,7 +1719,9 @@ questions:
   split: dev
   provenance:
     source: context/ground_truth/subscriptions_dashboard.md
-    context_seed: subscription-starts.seed.yaml
+    context_seeds:
+    - subscription-starts.seed.yaml
+    - subscriptions-term-grain.seed.yaml
 - id: sub_churn_by_segment_2022
   domain: subscriptions
   tier: descriptive
@@ -1710,6 +1805,10 @@ questions:
   split: dev
   provenance:
     source: bi/ad-hoc/06_renewal_churn_by_segment_and_quarter.sql
+    context_seeds:
+    - renewal-rate.seed.yaml
+    - subscriptions-renewal-cohort.seed.yaml
+    - subscriptions-partial-quarter.seed.yaml
 - id: sub_growth_price_paid_2025
   domain: subscriptions
   tier: descriptive
@@ -1740,7 +1839,10 @@ questions:
   split: dev
   provenance:
     source: context/ground_truth/events.md
-    context_seed: grandfathered-plans.seed.yaml
+    context_seeds:
+    - grandfathered-plans.seed.yaml
+    - subscriptions-locked-price.seed.yaml
+    - subscriptions-price-change.seed.yaml
 - id: na_gift_card_revenue_2025
   domain: unanswerable
   tier: unanswerable
@@ -1767,6 +1869,8 @@ questions:
   split: dev
   provenance:
     source: authored
+    context_seeds:
+    - marketing-data-limits.seed.yaml
 - id: na_nps_q2_2026
   domain: unanswerable
   tier: unanswerable
@@ -1795,6 +1899,9 @@ questions:
   split: dev
   provenance:
     source: authored
+    context_seeds:
+    - customers-unavailable-data.seed.yaml
+    - marketing-data-limits.seed.yaml
 - id: na_store_visits_2025
   domain: unanswerable
   tier: unanswerable
@@ -1823,6 +1930,9 @@ questions:
   split: dev
   provenance:
     source: authored
+    context_seeds:
+    - customers-unavailable-data.seed.yaml
+    - marketing-data-limits.seed.yaml
 - id: na_revenue_september_2026
   domain: unanswerable
   tier: unanswerable
@@ -1844,6 +1954,7 @@ questions:
   split: dev
   provenance:
     source: authored
+    context_seeds: []
 - id: na_email_open_rate_btb
   domain: unanswerable
   tier: unanswerable
@@ -1870,3 +1981,4 @@ questions:
   split: dev
   provenance:
     source: authored
+    context_seeds: []

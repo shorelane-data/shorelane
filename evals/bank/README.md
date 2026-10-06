@@ -56,7 +56,8 @@ Authored in a spec (the domain comes from the spec file):
 | `trap` | the plausible-wrong path, in words (required unless `trap_tag: none`) |
 | `context_required` | the human-confirmed artifacts that resolve the trap: `shorelane:` (this repo's `context/`), `acf:` (shorelane-analytics-context), `dbt:` (the dbt project) |
 | `split` | `dev` here; `holdout` only in shorelane-bench |
-| `provenance.source` | where the question came from; `context_seed` names the analytics-context seed it overlaps, if any |
+| `provenance.source` | where the question came from |
+| `provenance.context_seeds` | the analytics-context eval seeds the question overlaps (below); `[]` once checked and none applies. Required |
 
 Added by the build: `pinned_scope.as_of` (the snapshot), the gold's numbers and
 `tolerance`, `silent_fail_values` (what each wrong path returns on the bench
@@ -114,8 +115,32 @@ from dev only: nobody editing shorelane-analytics-context reads the holdout.
 | `evals/demo/cases.yaml` | 3 representatives (the 92 are one template over months; the rest stay a drift-demo corpus) |
 | `bi/ad-hoc/*.sql` | 01, 02, 03, 05, 06, 07, 09 (04, 10, 11, 12 overlap questions already here) |
 | `context/ground_truth/*_dashboard.md`, `events.md` | subscriptions, customers, marketing KPIs; all 5 seeded events as diagnostics |
-| analytics-context seeds | 22 questions overlap 19 of the 23 seeds (recorded as `context_seed`) |
+| analytics-context seeds | many questions share a definition with a seed: see the overlap section below |
 | authored | operations as-of questions, the unanswerables, the paper-order fanout |
 
-Questions that overlap an analytics-context seed are the ones the context was
-written against. Report lift on them separately from the rest.
+## Overlap with the analytics-context seeds
+
+The analytics-context interview emits eval seeds (`evals/seeds/*.seed.yaml`), one
+per confirmed disambiguation. A question **overlaps** a seed when the seed's intent
+(or `must_include`) settles the definition the question's gold rests on: the context
+author had that exact decision in front of them. Lift on overlapping questions is not
+independent of how the context was written, so report it separately from the rest.
+
+Overlaps are judged by hand and recorded in `provenance.context_seeds`, most direct
+first. `evals/bank/seed_overlap.py` keeps the record honest against the pinned context
+(`bench/modes.yaml` → `sources.context.commit`): it fails on a seed name the context
+does not have or a question with no record, reports coverage, and with `--suggest`
+shortlists similar seeds per question for the reviewer (a shortlist, never a verdict).
+
+```
+make bank-seeds CONTEXT=../shorelane-analytics-context        # this repo's dev bank
+python evals/bank/seed_overlap.py --context ../shorelane-analytics-context \
+    --specs ../shorelane-bench/bank/specs --suggest            # holdout specs
+```
+
+Re-check whenever the context pin moves: a new interview adds seeds. At context
+6298880 (63 seeds), 36 of the 44 dev questions overlap at least one seed and 53 seeds
+are named. The 8 independent dev questions are the March 2023 consumer-orders
+diagnostic, 2025 ad spend by platform, 2025 GMV of paper orders, the three operations
+as-of questions, revenue for September 2026 (after the as_of) and the BTB15 email
+open rate. Holdout questions are checked the same way before they count as independent.
