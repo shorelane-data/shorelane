@@ -304,6 +304,93 @@ def recognized_by_channel_by_quarter(t: Tables, *, start: str, end: str, as_of: 
     )
 
 
+@deriver
+def refund_rate_by_quarter(t: Tables, *, as_of: str) -> Derived:
+    """Refund-date dollars / order-date GMV, all history through inclusive as_of.
+
+    Raw inputs only: app_db__customers, app_db__orders, stripe__refunds.
+    Real customer orders only; marketplace uses full gross ticket. Refunds on
+    older orders stay in their refund quarter. No future order/refund is used.
+    Output matches the benchmark SQL, including refund-only quarters (NULL GMV),
+    zero-GMV rates (NULL), and a flag for the final incomplete calendar quarter.
+    Ratios retain nine decimal places to match BigQuery NUMERIC division; the
+    shared _ratio helper's four decimals would lose useful precision here.
+
+    Wrong paths: net revenue as denominator, pre-refund net order value as
+    denominator, refund attribution to order quarter, and test/internal leakage.
+    """
+    cutoff = _ts(as_of)
+    if pd.isna(cutoff) or cutoff != cutoff.normalize():
+        raise ValueError("as_of must be a calendar date")
+    if cutoff > _ts("2026-08-31"):
+        raise ValueError("as_of exceeds the frozen bench cutoff 2026-08-31")
+
+    raw_orders = t["app_db__orders"]
+    raw_refunds = t["stripe__refunds"]
+    if raw_orders.order_id.isna().any() or raw_orders.order_id.duplicated().any():
+        raise ValueError("app_db__orders.order_id must be non-null and unique")
+    if raw_refunds.refund_id.isna().any() or raw_refunds.refund_id.duplicated().any():
+        raise ValueError("stripe__refunds.refund_id must be non-null and unique")
+
+    raw_orders = raw_orders.loc[_day(raw_orders.order_date) <= cutoff].copy()
+    raw_orders["quarter"] = _day(raw_orders.order_date).dt.to_period("Q")
+    # Map rather than join so customer/source-ID multiplicity cannot fan out refunds.
+    raw_refunds = raw_refunds.loc[
+        (_day(raw_refunds.refund_date) <= cutoff)
+        & raw_refunds.order_id.isin(raw_orders.order_id)
+    ].copy()
+    raw_refunds["quarter"] = _day(raw_refunds.refund_date).dt.to_period("Q")
+    raw_refunds["order_quarter"] = (
+        raw_refunds.quarter.copy() if raw_refunds.empty else
+        raw_refunds.order_id.map(raw_orders.set_index("order_id").quarter)
+    )
+    eligible = raw_orders.loc[raw_orders.customer_id.isin(real_customer_ids(t))]
+    refunds = raw_refunds.loc[raw_refunds.order_id.isin(eligible.order_id)]
+
+    gross = eligible.groupby("quarter").gross_amount.sum(min_count=1)
+    net = eligible.groupby("quarter").net_amount.sum(min_count=1)
+    returned = refunds.groupby("quarter").refund_amount.sum(min_count=1)
+    by_order = refunds.groupby("order_quarter").refund_amount.sum(min_count=1)
+    raw_gross = raw_orders.groupby("quarter").gross_amount.sum(min_count=1)
+    raw_returned = raw_refunds.groupby("quarter").refund_amount.sum(min_count=1)
+
+    def money_or_none(value):
+        return None if pd.isna(value) else _money(value)
+
+    def rate(numerator, denominator):
+        if pd.isna(numerator) or pd.isna(denominator) or denominator == 0:
+            return None
+        return round(float(numerator / denominator), 9)
+
+    rows, silent = [], {}
+    for q in sorted(set(gross.index) | set(returned.index)):
+        # SQL COALESCE(refund_amount, 0), but no COALESCE on GMV.
+        amount = returned.get(q, 0.0)
+        amount = 0.0 if pd.isna(amount) else amount
+        denominator = gross.get(q, float("nan"))
+        gold_rate = rate(amount, denominator)
+        rows.append([
+            q.start_time.strftime("%Y-%m-%d"), _money(amount),
+            money_or_none(denominator), gold_rate,
+            bool(cutoff < q.end_time.normalize()),
+        ])
+        alternatives = {
+            "net_revenue_denominator": rate(amount, net.get(q, float("nan")) - amount),
+            "pre_refund_net_denominator": rate(amount, net.get(q, float("nan"))),
+            "refunds_at_order_date": rate(by_order.get(q, 0.0), denominator),
+            "including_test_internal": rate(raw_returned.get(q, 0.0), raw_gross.get(q, float("nan"))),
+        }
+        for label, wrong in alternatives.items():
+            if wrong is not None and wrong != gold_rate:
+                silent[f"{label}_{q}"] = wrong
+
+    return Derived(
+        columns=["quarter_start", "refund_amount", "gmv", "refund_rate", "is_partial_quarter"],
+        rows=rows,
+        silent_fail=silent,
+    )
+
+
 # --------------------------------------------------------------------------- identity
 
 @deriver
