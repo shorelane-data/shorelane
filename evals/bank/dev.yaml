@@ -53,6 +53,10 @@ questions:
     the unresolved aliases; counting every resolved app profile includes profiles that never ordered;
     counting from staging orders keeps test and internal accounts. The business count is ordered real
     canonical customers, with unresolved identity quality reported separately.
+  intent: The count of real canonical customers (test and internal accounts excluded) with at least one
+    eligible order through 2025-12-31, at canonical-customer grain across all four source systems; unresolved
+    source IDs and the resolution null rate are reported alongside, not folded into the count.
+  status: confirmed
   context_required:
   - shorelane:context/guides/customer_identity.md
   - shorelane:context/semantic/customer_identity.view.lkml
@@ -95,6 +99,9 @@ questions:
   trap: 'The 2021 identity migration left a crosswalk gap: some pre-migration Shopify aliases were never
     linked. Returning every observed pre-migration alias ignores the gap; returning only the missing ones
     reverses the question.'
+  intent: Among Shopify aliases created before the 2021 identity migration, the number linked to a canonical
+    app customer as of 2025-12-31, with the number never linked reported as the missing count.
+  status: confirmed
   context_required:
   - shorelane:context/guides/customer_identity.md
   - acf:domains/customers/
@@ -150,6 +157,10 @@ questions:
   trap: Joining orders to the resolved identity bridge fans each order out once per alias, including historical
     Stripe aliases. Deduplicate the eligible canonical customers before filtering order facts, and keep
     test and internal accounts out.
+  intent: 2024 GMV of eligible orders placed by real canonical customers who resolve to at least two distinct
+    source systems as of 2025-12-31, counting each order once (customers deduplicated before joining orders,
+    so aliases do not fan orders out).
+  status: confirmed
   context_required:
   - shorelane:context/guides/customer_identity.md
   - shorelane:context/semantic/customer_identity.view.lkml
@@ -188,6 +199,9 @@ questions:
     at least one order in the trailing twelve full calendar months. Wrong paths: counting every profile
     ever created, summing the per-channel counts (customers overlap), or keeping test and internal accounts
     (the customers dashboard does).'
+  intent: Real canonical customers (test and internal excluded) with at least one eligible order in the
+    twelve full calendar months ending December 2025, counted once across channels.
+  status: confirmed
   context_required:
   - shorelane:context/metrics/customers.yml
   - acf:domains/customers/
@@ -228,6 +242,8 @@ questions:
   trap: A new customer is one whose first-ever order (any channel) falls in the period. Counting app profiles
     created in the period counts sign-ups that never ordered; counting first orders per channel counts
     existing customers trying a new channel.
+  intent: Real canonical customers whose first-ever eligible order, in any channel, falls in Q2 2026.
+  status: confirmed
   context_required:
   - shorelane:context/metrics/customers.yml
   - acf:domains/customers/
@@ -266,6 +282,9 @@ questions:
     raw_channel_labels: 1977
   trap: 2022 straddles the direct-to-d2c rename (2022-06-01). On raw labels a consumer who ordered before
     and after the rename looks like a two-channel customer.
+  intent: Real canonical customers with eligible 2022 orders in at least two canonical channels, where
+    pre-rename 'direct' orders count as d2c.
+  status: confirmed
   context_required:
   - shorelane:context/metrics/customers.yml
   - shorelane:context/metrics/revenue.yml
@@ -317,6 +336,10 @@ questions:
   silent_fail_values: {}
   trap: The dip is visible in orders and revenue, but its cause is only in erp__supplier_shipments. An
     agent that looks at sales tables alone reaches for seasonality.
+  intent: 'The cause of the March 2023 consumer order dip: the paper supplier''s shipments stopped from
+    early March to early April 2023, so paper went short and paper''s share of consumer line revenue collapsed
+    until supply returned.'
+  status: confirmed
   context_required: []
   split: dev
   provenance:
@@ -371,6 +394,9 @@ questions:
   silent_fail_values: {}
   trap: Order count and AOV move in opposite directions. The cause is in app_db__promotions and the orders'
     promo_code; line-level discount_pct carries the magnitude.
+  intent: 'The cause of the September 2024 consumer AOV drop alongside strong order volume: the Back to
+    Business promotion (BTB15, 15% off) lifted order count while its discount lowered order value.'
+  status: confirmed
   context_required: []
   split: dev
   provenance:
@@ -453,6 +479,10 @@ questions:
   silent_fail_values: {}
   trap: The cause is a price-table change (app_db__plan_prices), not a sales table. Counting all terms
     started (renewals included) blurs the dip.
+  intent: The cause of the dip in new first-term subscription starts from May 2025 (the generation-3 per-seat
+    price increase effective 2025-05-01), and whether total new ACV per month fell against the pre-May
+    baseline, which it did.
+  status: confirmed
   context_required:
   - acf:domains/subscriptions/
   split: dev
@@ -557,6 +587,10 @@ questions:
   silent_fail_values: {}
   trap: The churn is visible in fct_subscriptions, but its cause lives in zendesk tickets keyed by source-native
     ids, which need identity resolution to connect to subscription customers.
+  intent: 'How far enterprise renewal churn on terms ending in Q4 2022 exceeded SMB and other quarters,
+    and its cause: a billing incident visible as enterprise billing tickets from about September 2022,
+    linked to customers through the identity crosswalk.'
+  status: confirmed
   context_required:
   - shorelane:context/guides/customer_identity.md
   - acf:domains/subscriptions/
@@ -620,6 +654,10 @@ questions:
   silent_fail_values: {}
   trap: The cause is in ads__daily_spend. Platform-reported conversions are inflated and the day totals
     in fct_marketing_spend repeat per platform row.
+  intent: 'The cause of the drop in new d2c customers (first-ever d2c orders) from February 2026: paid-media
+    spend cut to about a third of run-rate on every platform from February through April 2026, with acquisition
+    recovering when spend returned.'
+  status: confirmed
   context_required:
   - acf:domains/marketing/
   split: dev
@@ -670,6 +708,9 @@ questions:
     than it is. The warehouse-attributed denominator is first-ever d2c orders. fct_marketing_spend repeats
     that day total on every platform row, so summing it over rows multiplies the denominator by the number
     of platforms.
+  intent: Paid-media spend in H1 2026 divided by new d2c customers in H1 2026, where a new d2c customer
+    is a first-ever order placed in d2c (the warehouse-attributed count, not platform-reported conversions).
+  status: confirmed
   context_required:
   - acf:domains/marketing/
   split: dev
@@ -706,6 +747,9 @@ questions:
   trap: The phrasing points at fct_marketing_spend, whose attributed_new_d2c_customers_day_total is the
     day's total repeated on each platform's row; summing it triple-counts. Platform-reported conversions
     are inflated. The attributed count is first-ever d2c orders.
+  intent: Customers whose first-ever order was placed in d2c during Q1 2026 (the warehouse-attributed
+    new d2c customer count, each counted once).
+  status: confirmed
   context_required:
   - acf:domains/marketing/
   split: dev
@@ -748,6 +792,8 @@ questions:
     ORDER BY platform
   silent_fail_values: {}
   trap: null
+  intent: Total paid-media spend in USD per ad platform for calendar 2025.
+  status: confirmed
   context_required: []
   split: dev
   provenance:
@@ -788,6 +834,9 @@ questions:
       (SELECT ROUND(SUM(gross_amount), 2) FROM promo) AS promo_gmv
   silent_fail_values: {}
   trap: null
+  intent: Orders placed in September 2024 that carried promo code BTB15, and the line- level discount
+    dollars on those orders (quantity x unit price x discount pct).
+  status: confirmed
   context_required: []
   split: dev
   provenance:
@@ -853,6 +902,9 @@ questions:
     ORDER BY category
   silent_fail_values: {}
   trap: null
+  intent: Line revenue, gross margin and margin % per product category over every 2025 consumer order
+    line on eligible orders (fct_order_lines, all consumer channels, not d2c only).
+  status: confirmed
   context_required: []
   split: dev
   provenance:
@@ -888,6 +940,9 @@ questions:
     category_line_amount_only: 614425.42
   trap: Joining order lines to orders and summing gross_amount counts an order once per matching line.
     Summing line_amount answers "paper revenue", not the GMV of orders containing paper.
+  intent: The summed gross amount of 2025 orders containing at least one paper line, each order counted
+    once (not paper line revenue).
+  status: confirmed
   context_required:
   - dbt:models/marts/_marts.yml
   split: dev
@@ -919,6 +974,9 @@ questions:
   trap: status reflects the snapshot (2026-08-31), not June 30. A ticket solved in July reads 'solved'
     today but was open at the end of June. Filtering status = 'open' answers "open now"; counting tickets
     created in June answers "opened".
+  intent: Support tickets created on or before 2026-06-30 and not yet resolved as of that date (the backlog
+    at June 30, not tickets open at the snapshot).
+  status: confirmed
   context_required:
   - dbt:models/staging/_staging.yml
   split: dev
@@ -948,6 +1006,9 @@ questions:
     status_in_transit_at_snapshot: 6
   trap: status = 'in_transit' is the state at the snapshot. The question asks about June 30, so received_date
     has to be compared with that date.
+  intent: Supplier shipments due on or before 2026-06-30 whose received date is after that date or missing
+    (in transit as of June 30, not at the snapshot).
+  status: confirmed
   context_required:
   - dbt:models/staging/_staging.yml
   split: dev
@@ -993,6 +1054,8 @@ questions:
     ORDER BY category
   silent_fail_values: {}
   trap: null
+  intent: Support tickets created in calendar 2025, counted per ticket category.
+  status: confirmed
   context_required: []
   split: dev
   provenance:
@@ -1029,6 +1092,8 @@ questions:
     (in-period sales). The unqualified default is recognized revenue, which is higher here because of
     ratable recognition from subscriptions booked in the Q4 budget flush. Summing the five measures is
     also wrong.'
+  intent: Recognized revenue for Q1 2024, the default meaning of unqualified "revenue".
+  status: confirmed
   context_required:
   - shorelane:context/metrics/revenue.yml
   - shorelane:context/guides/personas.md
@@ -1069,6 +1134,8 @@ questions:
     collected_cash: 4942255.88
   trap: The persona flips the default. Marcus (VP Marketing) means GMV by "revenue", not the CFO's recognized
     number. Tests whether the agent uses persona context.
+  intent: 'GMV for Q1 2024: the VP Marketing means GMV when they say revenue.'
+  status: confirmed
   context_required:
   - shorelane:context/guides/personas.md
   - acf:company/org-structure.md
@@ -1107,6 +1174,8 @@ questions:
     billed_revenue: 4630254.31
   trap: '"Actually collected" points at collected cash, but an agent anchored on a generic revenue definition
     returns recognized or net revenue.'
+  intent: Collected cash for Q1 2024 (payments received in the quarter).
+  status: confirmed
   context_required:
   - shorelane:context/metrics/revenue.yml
   - acf:domains/executive-revenue/
@@ -1142,6 +1211,8 @@ questions:
     staging_including_test_and_internal: 33073943.02
   trap: 'Control question: the measure is named. The only wrong path is summing gross_amount over unfiltered
     staging orders, which includes test and internal accounts.'
+  intent: GMV for calendar 2025 over eligible orders (test and internal accounts excluded).
+  status: confirmed
   context_required: []
   split: dev
   provenance:
@@ -1177,6 +1248,8 @@ questions:
     billed_revenue: 9215469.97
     collected_cash: 9114052.34
   trap: null
+  intent: Net revenue for Q2 2026.
+  status: confirmed
   context_required: []
   split: dev
   provenance:
@@ -1212,6 +1285,8 @@ questions:
     net_revenue: 11473862.9
     collected_cash: 9338987.54
   trap: null
+  intent: Billed revenue for Q4 2025 (amounts invoiced in the quarter).
+  status: confirmed
   context_required: []
   split: dev
   provenance:
@@ -1251,6 +1326,9 @@ questions:
   trap: '"Last quarter" is the most recent fully elapsed calendar quarter relative to the data''s as_of
     (2026-08-31), i.e. Q2 2026. Wrong paths: the current partial quarter (Q3 to date), a trailing 90 days,
     CURRENT_DATE() instead of the snapshot date, or answering GMV instead of the recognized default.'
+  intent: Recognized revenue for Q2 2026, the most recent fully elapsed calendar quarter before the data's
+    as_of (2026-08-31).
+  status: confirmed
   context_required:
   - shorelane:context/metrics/revenue.yml
   - acf:domains/executive-revenue/
@@ -1296,6 +1374,9 @@ questions:
   trap: This year is only complete through the as_of (2026-08-31). The like-for-like comparison is Jan-Aug
     2026 vs Jan-Aug 2025. Comparing the partial year with the full 2025 reports a steep decline that did
     not happen.
+  intent: Growth in recognized revenue for January-August 2026 against January-August 2025 (year to date
+    through the as_of, like for like).
+  status: confirmed
   context_required:
   - shorelane:context/metrics/revenue.yml
   - acf:domains/executive-revenue/
@@ -1371,6 +1452,9 @@ questions:
     ORDER BY quarter
   silent_fail_values: {}
   trap: null
+  intent: Recognized revenue, GMV, net revenue, billed revenue and collected cash for each calendar quarter
+    of 2025, each as its own column.
+  status: confirmed
   context_required: []
   split: dev
   provenance:
@@ -1407,6 +1491,8 @@ questions:
     staging_including_test_and_internal: 3852
   trap: Test and internal accounts place orders. Nothing in the order table marks them; the rule (account_type
     = 'customer') is a business definition. Counting staging orders includes them.
+  intent: Eligible orders (real customer accounts, test and internal excluded) placed in Q2 2026.
+  status: confirmed
   context_required:
   - shorelane:context/metrics/revenue.yml
   - acf:domains/executive-revenue/
@@ -1444,6 +1530,9 @@ questions:
     marketplace_gmv: 220074.48
   trap: Marketplace earnings are Shorelane's take (net_amount). gross_amount is the seller's retail price,
     i.e. marketplace GMV; reporting it as earnings overstates them several times over.
+  intent: Shorelane's commission (net_amount) on marketplace orders placed in Q2 2026, before refunds;
+    not the sellers' retail value.
+  status: confirmed
   context_required:
   - shorelane:context/metrics/revenue.yml
   - acf:domains/executive-revenue/
@@ -1499,6 +1588,9 @@ questions:
     raw_label_d2c_gmv_2022: 1068583.35
   trap: The d2c channel was labelled 'direct' until 2022-06-01 and the rename was never backfilled. Filtering
     the raw label (stg_orders.channel or fct_orders.channel_raw) makes d2c look like it launched in mid-2022.
+  intent: GMV per calendar year 2019-2025 for the canonical d2c channel, including orders labelled 'direct'
+    before the 2022-06-01 rename.
+  status: confirmed
   context_required:
   - shorelane:context/metrics/revenue.yml
   - acf:domains/executive-revenue/
@@ -1550,6 +1642,9 @@ questions:
     by recognition_date. Splitting fct_orders.net_amount by order date answers a different measure; joining
     to unfiltered staging orders (as the executive dashboard's channel chart does) keeps test/internal
     accounts.
+  intent: Recognized revenue dated by recognition date in 2025, split by the canonical channel of the
+    eligible originating order.
+  status: confirmed
   context_required:
   - shorelane:context/metrics/revenue.yml
   - acf:domains/executive-revenue/
@@ -1584,6 +1679,9 @@ questions:
   trap: Active at D means a term containing D, counted at customer grain. status = 'active' only marks
     terms still undecided at the snapshot, so it answers "today" not 2025-12-31; filtering to is_current
     plans drops every grandfathered generation; seats and terms are different units.
+  intent: Customers holding a subscription term that contains 2025-12-31, on any plan generation, counted
+    once per customer.
+  status: confirmed
   context_required:
   - shorelane:context/metrics/customers.yml
   - acf:domains/subscriptions/
@@ -1637,6 +1735,9 @@ questions:
     current_generation_only_total: 2125
   trap: Retired (grandfathered) generations still carry live subscribers. Filtering to is_current plans
     reports only generation 3.
+  intent: 'Per plan generation, including retired ones: customers holding a term that contains 2025-12-31,
+    and the summed ACV of those terms.'
+  status: confirmed
   context_required:
   - acf:domains/subscriptions/
   split: dev
@@ -1679,6 +1780,8 @@ questions:
   trap: Renewal rate is renewed / (renewed + churned) over terms that ENDED in the period, counted in
     terms. An ACV-weighted rate is dollar retention, a different metric; renewals as a share of terms
     started answers "how much of our booking volume is renewals".
+  intent: Renewed / (renewed + churned) over subscription terms that ended in 2025, counted in terms.
+  status: confirmed
   context_required:
   - acf:domains/subscriptions/
   split: dev
@@ -1714,6 +1817,8 @@ questions:
     all_terms_started: 3232
   trap: Every renewal is a new term row. New subscriptions are first terms only; counting all terms started
     includes renewals.
+  intent: First subscription terms (not renewals) started in 2025.
+  status: confirmed
   context_required:
   - acf:domains/subscriptions/
   split: dev
@@ -1801,6 +1906,9 @@ questions:
     ORDER BY quarter, segment
   silent_fail_values: {}
   trap: null
+  intent: 'Per quarter of term end in 2022 and per customer segment: terms decided (renewed or churned),
+    terms churned, and churned / decided.'
+  status: confirmed
   context_required: []
   split: dev
   provenance:
@@ -1834,6 +1942,9 @@ questions:
   trap: A term keeps the price in effect when it started. The May 2025 gen-3 increase applies only to
     terms starting after it, so the catalog's current price (dim_plans) overstates what the active base
     pays.
+  intent: Seat-weighted price per seat per year actually paid on Growth plan terms active at 2025-12-31,
+    each term at the price locked when it started (not the current catalog price).
+  status: confirmed
   context_required:
   - acf:domains/subscriptions/
   split: dev
@@ -1865,6 +1976,9 @@ questions:
   silent_fail_values: {}
   trap: A plausible-wrong answer filters product names or promo codes for anything gift-like, or reports
     total recognized revenue.
+  intent: Gift card revenue recognized in 2025; Shorelane's data carries no gift cards, so the right answer
+    says it can't be answered.
+  status: confirmed
   context_required: []
   split: dev
   provenance:
@@ -1895,6 +2009,9 @@ questions:
   silent_fail_values: {}
   trap: A plausible-wrong answer invents a proxy from ticket volume or resolution time and reports it
     as NPS.
+  intent: Net Promoter Score for Q2 2026; no survey data exists, so the right answer says it can't be
+    answered.
+  status: confirmed
   context_required: []
   split: dev
   provenance:
@@ -1926,6 +2043,9 @@ questions:
   gold_sql: null
   silent_fail_values: {}
   trap: A plausible-wrong answer reports ad clicks or order counts as visits.
+  intent: Physical store visits in December 2025; Shorelane has no stores or footfall data, so the right
+    answer says it can't be answered.
+  status: confirmed
   context_required: []
   split: dev
   provenance:
@@ -1950,6 +2070,9 @@ questions:
   trap: 'The warehouse holds nothing after the as_of, so a revenue query for September returns an empty
     sum. Wrong paths: reporting it as zero revenue, or silently substituting a forecast or the latest
     complete month.'
+  intent: Revenue for September 2026, which is after the data's as_of (2026-08-31); the right answer says
+    the month isn't loaded yet.
+  status: confirmed
   context_required: []
   split: dev
   provenance:
@@ -1977,6 +2100,9 @@ questions:
   gold_sql: null
   silent_fail_values: {}
   trap: A plausible-wrong answer reports promo redemption rate or ad click-through rate as the open rate.
+  intent: Email open rate on the Back to Business campaign; no email engagement data is loaded, so the
+    right answer says it can't be answered.
+  status: confirmed
   context_required: []
   split: dev
   provenance:

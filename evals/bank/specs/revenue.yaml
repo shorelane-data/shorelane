@@ -25,7 +25,10 @@ questions:
       which is higher here because of ratable recognition from subscriptions booked in
       the Q4 budget flush. Summing the five measures is also wrong.
     context_required: [shorelane:context/metrics/revenue.yml, shorelane:context/guides/personas.md, acf:domains/executive-revenue/]
+    intent: >
+      Recognized revenue for Q1 2024, the default meaning of unqualified "revenue".
     split: dev
+    status: confirmed
     provenance: {source: evals/questions.yaml#revenue_q1_2024_unqualified, context_seeds: [revenue.seed.yaml, recognized-revenue.seed.yaml, revenue-fact-grain.seed.yaml]}
 
   - id: rev_q1_2024_marketing_persona
@@ -48,7 +51,10 @@ questions:
       The persona flips the default. Marcus (VP Marketing) means GMV by "revenue", not
       the CFO's recognized number. Tests whether the agent uses persona context.
     context_required: [shorelane:context/guides/personas.md, acf:company/org-structure.md]
+    intent: >
+      GMV for Q1 2024: the VP Marketing means GMV when they say revenue.
     split: dev
+    status: confirmed
     provenance: {source: evals/questions.yaml#revenue_q1_2024_marketing, context_seeds: [revenue.seed.yaml, gmv.seed.yaml]}
 
   - id: rev_q1_2024_collected
@@ -71,7 +77,10 @@ questions:
       "Actually collected" points at collected cash, but an agent anchored on a generic
       revenue definition returns recognized or net revenue.
     context_required: [shorelane:context/metrics/revenue.yml, acf:domains/executive-revenue/]
+    intent: >
+      Collected cash for Q1 2024 (payments received in the quarter).
     split: dev
+    status: confirmed
     provenance: {source: evals/questions.yaml#revenue_q1_2024_cash, context_seeds: [collected-cash.seed.yaml, revenue-fact-grain.seed.yaml]}
 
   - id: rev_fy2025_gmv
@@ -95,7 +104,11 @@ questions:
       gross_amount over unfiltered staging orders, which includes test and internal
       accounts.
     context_required: []
+    intent: >
+      GMV for calendar 2025 over eligible orders (test and internal accounts
+      excluded).
     split: dev
+    status: confirmed
     provenance: {source: evals/demo/cases.yaml#gmv_2025_fy, context_seeds: [gmv.seed.yaml, revenue-fact-grain.seed.yaml]}
 
   - id: rev_q2_2026_net
@@ -115,7 +128,10 @@ questions:
       WHERE measure_name = 'net_revenue'
         AND activity_date BETWEEN '2026-04-01' AND '2026-06-30'
     context_required: []
+    intent: >
+      Net revenue for Q2 2026.
     split: dev
+    status: confirmed
     provenance: {source: evals/demo/cases.yaml#net_revenue_2026_q2, context_seeds: [net-revenue.seed.yaml, revenue-fact-grain.seed.yaml]}
 
   - id: rev_q4_2025_billed
@@ -135,7 +151,10 @@ questions:
       WHERE measure_name = 'billed_revenue'
         AND activity_date BETWEEN '2025-10-01' AND '2025-12-31'
     context_required: []
+    intent: >
+      Billed revenue for Q4 2025 (amounts invoiced in the quarter).
     split: dev
+    status: confirmed
     provenance: {source: evals/demo/cases.yaml#billed_revenue_2025_q4, context_seeds: [billed-revenue.seed.yaml, revenue-fact-grain.seed.yaml]}
 
   - id: rev_last_quarter
@@ -160,7 +179,11 @@ questions:
       (Q3 to date), a trailing 90 days, CURRENT_DATE() instead of the snapshot date,
       or answering GMV instead of the recognized default.
     context_required: [shorelane:context/metrics/revenue.yml, acf:domains/executive-revenue/]
+    intent: >
+      Recognized revenue for Q2 2026, the most recent fully elapsed calendar quarter
+      before the data's as_of (2026-08-31).
     split: dev
+    status: confirmed
     provenance: {source: shorelane-analytics-context/evals/seeds/last-quarter.seed.yaml, context_seeds: [last-quarter.seed.yaml, revenue.seed.yaml]}
 
   - id: rev_ytd_growth_2026
@@ -189,7 +212,11 @@ questions:
       comparison is Jan-Aug 2026 vs Jan-Aug 2025. Comparing the partial year with the
       full 2025 reports a steep decline that did not happen.
     context_required: [shorelane:context/metrics/revenue.yml, acf:domains/executive-revenue/]
+    intent: >
+      Growth in recognized revenue for January-August 2026 against January-August 2025
+      (year to date through the as_of, like for like).
     split: dev
+    status: confirmed
     provenance: {source: shorelane-analytics-context/evals/seeds/revenue-period-completeness.seed.yaml, context_seeds: [revenue-period-completeness.seed.yaml, revenue.seed.yaml]}
 
   - id: rev_five_measures_by_quarter_2025
@@ -216,7 +243,11 @@ questions:
       GROUP BY quarter
       ORDER BY quarter
     context_required: []
+    intent: >
+      Recognized revenue, GMV, net revenue, billed revenue and collected cash for each
+      calendar quarter of 2025, each as its own column.
     split: dev
+    status: confirmed
     provenance: {source: bi/ad-hoc/01_five_revenues_by_quarter.sql, context_seeds: [revenue.seed.yaml, revenue-fact-grain.seed.yaml, recognized-revenue.seed.yaml, gmv.seed.yaml, net-revenue.seed.yaml, billed-revenue.seed.yaml, collected-cash.seed.yaml]}
 
   - id: rev_orders_q2_2026
@@ -238,7 +269,11 @@ questions:
       the rule (account_type = 'customer') is a business definition. Counting staging
       orders includes them.
     context_required: [shorelane:context/metrics/revenue.yml, acf:domains/executive-revenue/]
+    intent: >
+      Eligible orders (real customer accounts, test and internal excluded) placed in
+      Q2 2026.
     split: dev
+    status: confirmed
     provenance: {source: shorelane-analytics-context/evals/seeds/eligible-order.seed.yaml, context_seeds: [eligible-order.seed.yaml, executive-order-hygiene-correction.seed.yaml]}
 
   - id: rev_marketplace_take_q2_2026
@@ -262,7 +297,11 @@ questions:
       seller's retail price, i.e. marketplace GMV; reporting it as earnings overstates
       them several times over.
     context_required: [shorelane:context/metrics/revenue.yml, acf:domains/executive-revenue/]
+    intent: >
+      Shorelane's commission (net_amount) on marketplace orders placed in Q2 2026,
+      before refunds; not the sellers' retail value.
     split: dev
+    status: confirmed
     provenance: {source: bi/ad-hoc/02_marketplace_take_rate_by_month.sql, context_seeds: [marketplace-earnings.seed.yaml]}
 
   - id: rev_d2c_gmv_by_year
@@ -287,7 +326,11 @@ questions:
       backfilled. Filtering the raw label (stg_orders.channel or fct_orders.channel_raw)
       makes d2c look like it launched in mid-2022.
     context_required: [shorelane:context/metrics/revenue.yml, acf:domains/executive-revenue/]
+    intent: >
+      GMV per calendar year 2019-2025 for the canonical d2c channel, including orders
+      labelled 'direct' before the 2022-06-01 rename.
     split: dev
+    status: confirmed
     provenance: {source: bi/ad-hoc/03_d2c_by_year_raw_label_vs_canonical.sql, context_seeds: [canonical-channel.seed.yaml, marketing-gmv-routing.seed.yaml]}
 
   - id: rev_recognized_by_channel_2025
@@ -313,5 +356,9 @@ questions:
       order date answers a different measure; joining to unfiltered staging orders
       (as the executive dashboard's channel chart does) keeps test/internal accounts.
     context_required: [shorelane:context/metrics/revenue.yml, acf:domains/executive-revenue/]
+    intent: >
+      Recognized revenue dated by recognition date in 2025, split by the canonical
+      channel of the eligible originating order.
     split: dev
+    status: confirmed
     provenance: {source: shorelane-analytics-context/evals/seeds/revenue-channel-reconciliation.seed.yaml, context_seeds: [revenue-channel-reconciliation.seed.yaml, recognized-revenue.seed.yaml]}

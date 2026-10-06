@@ -45,6 +45,8 @@ Authored in a spec (the domain comes from the spec file):
 | `tier` | `descriptive` (a number or table), `diagnostic` (why did X move), `unanswerable` |
 | `trap_tag` | the one silent-SQL failure the question is built around (below) |
 | `prompt` | exactly what the agent receives, after the mode-independent preamble |
+| `intent` | what the asker means, in words: the definition the gold measures. Metadata for reviewers, the judge and the seed export; never shown to the agent |
+| `status` | `confirmed` once a person has checked the intent and gold against the business definition; `draft` until then |
 | `persona` | who is asking (metadata only; anything the agent needs is in `prompt`) |
 | `pinned_scope` | `window: {start, end}` or `at: <date>`, inclusive, both on or before the bench `as_of`; `question_as_of` when the prompt names its own as-of |
 | `gold.kind` | `value`, `result_set`, `criteria` (diagnostic, judged) or `refusal` |
