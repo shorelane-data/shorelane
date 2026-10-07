@@ -237,10 +237,13 @@ def d2c_gmv_by_year(t: Tables, *, start: str, end: str) -> Derived:
 
 @deriver
 def d2c_orders_by_year(t: Tables, *, years: list[int]) -> Derived:
-    """Eligible direct-to-consumer orders by selected calendar years.
+    """Eligible direct-to-consumer orders by selected calendar years, at the
+    canonical channel (pre-rename 'direct' orders count as d2c).
 
     Wrong paths: filtering only the historical 'direct' label or only
-    the newer 'd2c' label instead of using the canonical channel.
+    the newer 'd2c' label instead of using the canonical channel. The
+    raw-label counts are silent-fail values, not gold columns: the scorer
+    reads every non-unit column as a label the answer must contain.
     """
     if not years or any(type(y) is not int or not 1 <= y <= 2025 for y in years):
         raise ValueError(
@@ -259,7 +262,7 @@ def d2c_orders_by_year(t: Tables, *, years: list[int]) -> Derived:
         raw_direct = int(w.loc[w.channel_raw == "direct", "order_id"].nunique())
         raw_d2c = int(w.loc[w.channel_raw == "d2c", "order_id"].nunique())
 
-        rows.append([year, canonical, raw_direct, raw_d2c])
+        rows.append([year, canonical])
 
         # Record only wrong-path counts that differ from the correct count.
         if raw_direct != canonical:
@@ -268,12 +271,7 @@ def d2c_orders_by_year(t: Tables, *, years: list[int]) -> Derived:
             silent[f"raw_label_d2c_orders_{year}"] = raw_d2c
 
     return Derived(
-        columns=[
-            "year",
-            "direct_channel_orders",
-            "raw_direct_orders",
-            "raw_d2c_orders",
-        ],
+        columns=["year", "d2c_orders"],
         rows=rows,
         silent_fail=silent,
     )
