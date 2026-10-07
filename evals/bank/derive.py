@@ -979,7 +979,6 @@ def supplier_product_sales_distribution(
             "supplier_id",
             "category",
             "product_sales_usd",
-            "total_product_sales_usd",
             "sales_share",
         ],
         rows=[
@@ -987,7 +986,6 @@ def supplier_product_sales_distribution(
                 r.supplier_id,
                 r.category,
                 _money(r.sales),
-                _money(total),
                 _ratio(r.sales / total) if total else None,
             ]
             for r in grouped.itertuples(index=False)
@@ -995,6 +993,9 @@ def supplier_product_sales_distribution(
         evidence={
             "start": start,
             "end": end,
+            # The total stays out of the rows: the scorer grades every unit
+            # column per row, and a total is stated once.
+            "total_product_sales_usd": _money(total),
             "scope": (
                 "Real-customer product order lines; "
                 "excludes revenue without lines"
