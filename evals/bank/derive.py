@@ -298,6 +298,123 @@ def d2c_orders_by_year(t: Tables, *, years: list[int]) -> Derived:
         silent_fail=silent,
     )
 
+@deriver
+def orders_channel_step_change(
+    t: Tables,
+    *,
+    start: str,
+    end: str,
+    before_month: str,
+    after_month: str,
+) -> Derived:
+    """Monthly order coverage and raw-versus-canonical D2C continuity.
+
+    Wrong paths: filtering only raw 'direct' or only raw 'd2c'.
+    Returns diagnostic evidence; does not assert a business cause.
+    """
+    start_day, end_day = _ts(start), _ts(end)
+    before, after = pd.Period(before_month, freq="M"), pd.Period(
+        after_month, freq="M"
+    )
+
+    if (
+        start_day != start_day.normalize()
+        or end_day != end_day.normalize()
+        or start_day.day != 1
+        or end_day != end_day + pd.offsets.MonthEnd(0)
+        or start_day > end_day
+        or end_day > _ts("2026-08-31")
+    ):
+        raise ValueError(
+            "Use complete calendar months ending by 2026-08-31"
+        )
+
+    months = pd.period_range(start_day, end_day, freq="M")
+    if before not in months or after not in months or before >= after:
+        raise ValueError("Comparison months must be ordered within the window")
+
+    o = orders(t)
+    o = o.loc[_between(o.order_date, start, end)].copy()
+    if o.order_id.isna().any() or o.order_id.duplicated().any():
+        raise ValueError("Eligible order IDs must be non-null and unique")
+
+    o["day"] = _day(o.order_date)
+    o["month"] = o.day.dt.to_period("M")
+    monthly = {}
+    silent = {}
+
+    for month in months:
+        w = o.loc[o.month == month]
+        d2c = w.loc[w.channel == "d2c"]
+        days = int(month.days_in_month)
+        total = int(w.order_id.nunique())
+        canonical = int(d2c.order_id.nunique())
+        raw_direct = int(w.loc[w.channel_raw == "direct", "order_id"].nunique())
+        raw_d2c = int(w.loc[w.channel_raw == "d2c", "order_id"].nunique())
+        key = str(month)
+
+        monthly[key] = {
+            "calendar_days": days,
+            "total_orders": total,
+            "d2c_orders": canonical,
+            "marketplace_orders": int(
+                w.loc[w.channel == "marketplace", "order_id"].nunique()
+            ),
+            "subscription_orders": int(
+                w.loc[
+                    w.channel == "business_subscription", "order_id"
+                ].nunique()
+            ),
+            "raw_direct_orders": raw_direct,
+            "raw_d2c_orders": raw_d2c,
+            "zero_order_days": days - int(w.day.nunique()),
+            "zero_d2c_days": days - int(d2c.day.nunique()),
+            "orders_per_day": round(total / days, 4),
+            "d2c_orders_per_day": round(canonical / days, 4),
+        }
+
+        if raw_direct != canonical:
+            silent[f"raw_direct_only_orders_{key}"] = raw_direct
+        if raw_d2c != canonical:
+            silent[f"raw_d2c_only_orders_{key}"] = raw_d2c
+
+    label_ranges = {}
+    for label, w in o.loc[o.channel == "d2c"].groupby("channel_raw"):
+        label_ranges[str(label)] = {
+            "first_date": w.day.min().strftime("%Y-%m-%d"),
+            "last_date": w.day.max().strftime("%Y-%m-%d"),
+            "orders": int(w.order_id.nunique()),
+        }
+
+    b, a = monthly[str(before)], monthly[str(after)]
+
+    def pct_change(new: float, old: float) -> float | None:
+        return round((new / old - 1) * 100, 4) if old else None
+
+    comparison = {}
+    for metric in ("total_orders", "d2c_orders"):
+        comparison[f"{metric}_change_pct"] = pct_change(
+            a[metric], b[metric]
+        )
+        comparison[f"{metric}_per_day_change_pct"] = pct_change(
+            a[metric] / a["calendar_days"],
+            b[metric] / b["calendar_days"],
+        )
+
+    return Derived(
+        evidence={
+            "window": {"start": start, "end": end},
+            "monthly": monthly,
+            "d2c_raw_label_ranges_within_window": label_ranges,
+            "comparison": {
+                "before_month": str(before),
+                "after_month": str(after),
+                **comparison,
+            },
+        },
+        silent_fail=silent,
+    )
+
 
 @deriver
 def recognized_by_channel(t: Tables, *, start: str, end: str) -> Derived:
