@@ -148,7 +148,7 @@ python evals/bank/seed_overlap.py --context ../shorelane-analytics-context \
 ```
 
 Re-check whenever the context pin moves: a new interview adds seeds. At context
-6298880 (63 seeds), 36 of the 44 dev questions overlap at least one seed and 53 seeds
+3e2b925 (63 seeds; unchanged from 6298880), 36 of the 44 dev questions overlap at least one seed and 53 seeds
 are named. The 8 independent dev questions are the March 2023 consumer-orders
 diagnostic, 2025 ad spend by platform, 2025 GMV of paper orders, the three operations
 as-of questions, revenue for September 2026 (after the as_of) and the BTB15 email
