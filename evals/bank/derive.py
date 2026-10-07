@@ -32,6 +32,7 @@ import pandas as pd
 from generators.common import canonical_channel
 from generators.identity_measures import derive_identity_measures
 from generators.measures import eligible_order_ids, five_revenues
+from loaders.visibility import visible_tables
 
 Tables = Mapping[str, pd.DataFrame]
 
@@ -583,6 +584,105 @@ def identity(t: Tables, *, measure: str, as_of: str, components: list[str] | Non
         value=m[measure],
         components={k: m[k] for k in components or []},
         silent_fail={k: m[k] for k in silent_fail or []},
+    )
+
+@deriver
+def crosswalk_unmatched_by_signup_year(t: Tables, *, as_of: str) -> Derived:
+    """Distinct canonical order IDs without a canonical crosswalk match by signup year.
+
+    Input is Shorelane's raw-table mapping. Deduplicate aliases before matching;
+    source_customer_id is not the canonical order customer key. Preserve unknown
+    signup years and include links arriving on the snapshot calendar date.
+    """
+    cutoff = _ts(as_of)
+    o = t["app_db__orders"]
+    c = t["app_db__customers"]
+    x = t["app_db__customer_id_crosswalk"]
+    customer_ids = o.loc[_day(o.order_date) <= cutoff, "customer_id"].drop_duplicates()
+    customers = c.loc[_day(c.created_at) <= cutoff,
+                      ["app_db_customer_id", "created_at", "account_type"]].copy()
+    customers["signup_year"] = customers.created_at.dt.year.astype("Int64")
+    frame = customer_ids.to_frame().merge(
+        customers.drop(columns="created_at"), how="left",
+        left_on="customer_id", right_on="app_db_customer_id", validate="many_to_one",
+    )
+    linked_ids = x.loc[_day(x.linked_at) <= cutoff, "app_db_customer_id"].dropna()
+    # SQL equality does not match null order IDs to null crosswalk IDs.
+    frame["unmatched"] = frame.customer_id.isna() | ~frame.customer_id.isin(linked_ids)
+    frame["real"] = frame.account_type.eq("customer").fillna(False)
+    rows = []
+    for year, group in frame.groupby("signup_year", dropna=False, sort=True):
+        total = len(group)
+        unmatched = int(group.unmatched.sum())
+        real_total = int(group.real.sum())
+        real_unmatched = int((group.real & group.unmatched).sum())
+        rows.append([
+            None if pd.isna(year) else int(year), total, unmatched, unmatched / total,
+            real_total, real_unmatched,
+            real_unmatched / real_total if real_total else None,
+        ])
+    # BigQuery ASC orders NULL first.
+    rows.sort(key=lambda row: (row[0] is not None, row[0] or 0))
+    return Derived(
+        columns=["signup_year", "order_customers", "unmatched_customers", "unmatched_rate",
+                 "real_order_customers", "real_unmatched_customers", "real_unmatched_rate"],
+        rows=rows,
+    )
+
+
+@deriver
+def multi_stripe_id_customers(t: Tables, *, as_of: str, cohort_start: str, cohort_end: str,
+                              start: str, end: str) -> Derived:
+    """Real customers with more than one Stripe ID at `as_of`, and whether customer
+    retention double counts them. Stripe IDs are every visible Stripe alias, active
+    and deactivated, resolved through the crosswalk; an unresolved alias belongs to
+    nobody. Retention is per canonical customer: real customers with an eligible
+    order in the cohort window who order again in [start, end].
+    Wrong paths: test and internal accounts left in, counting deactivated Stripe IDs
+    as the customers with a second ID, and retention over the Stripe alias bridge
+    (each recreated customer counted once per alias, customers without Stripe
+    dropped), with or without the alias's is_active flag read as 'retained'."""
+    if _ts(as_of) > _ts("2026-08-31"):
+        raise ValueError("as_of exceeds the frozen bench cutoff 2026-08-31")
+    if _ts(cohort_end) >= _ts(start) or _ts(end) > _ts(as_of):
+        raise ValueError("cohort window must precede the retention window, which ends by as_of")
+
+    v = visible_tables(dict(t), as_of)
+    xw = v["app_db__customer_id_crosswalk"]
+    xw = xw.loc[xw.source_system == "stripe", ["source_customer_id", "app_db_customer_id"]]
+    aliases = v["stripe__customers"].merge(
+        xw, left_on="stripe_customer_id", right_on="source_customer_id",
+        how="left", validate="one_to_one",
+    )
+    resolved = aliases[aliases.app_db_customer_id.notna()]
+    per_customer = resolved.groupby("app_db_customer_id").stripe_customer_id.nunique()
+    multi_any = per_customer[per_customer > 1].index
+    multi = multi_any[multi_any.isin(real_customer_ids(v))]
+
+    o = orders(t)
+    cohort = pd.Index(o.loc[_between(o.order_date, cohort_start, cohort_end), "customer_id"].unique())
+    retained = cohort.isin(o.loc[_between(o.order_date, start, end), "customer_id"])
+    bridge = pd.DataFrame({"customer_id": cohort, "retained": retained}).merge(
+        resolved[["app_db_customer_id", "is_active"]],
+        left_on="customer_id", right_on="app_db_customer_id", how="inner",
+    )
+    bridge_active = bridge.is_active.astype(bool)
+
+    return Derived(
+        value=int(len(multi)),
+        components={
+            "multi_in_retention_cohort": int(cohort.isin(multi).sum()),
+            "cohort_customers": int(len(cohort)),
+            "retained_customers": int(retained.sum()),
+            "canonical_retention": _ratio(retained.mean()),
+            "unresolved_stripe_ids": int(aliases.app_db_customer_id.isna().sum()),
+        },
+        silent_fail={
+            "including_test_and_internal": int(len(multi_any)),
+            "deactivated_stripe_ids": int((~aliases.is_active.astype(bool)).sum()),
+            "alias_bridge_retention": _ratio(bridge.retained.mean()),
+            "alias_is_active_retention": _ratio((bridge.retained & bridge_active).mean()),
+        },
     )
 
 
