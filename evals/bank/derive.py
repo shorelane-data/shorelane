@@ -784,15 +784,19 @@ def zendesk_tickets_unlinked(t: Tables, *, as_of: str) -> Derived:
         components={
             "first_created_date": date_text(unlinked.created_at, "min"),
             "last_created_date": date_text(unlinked.created_at, "max"),
-            "by_source": by_source,
-            "by_creation_month": {
-                month: int(count) for month, count in by_month.items()
-            },
             "linked_via_order": int(via_order.sum()),
             "linked_via_subscription": int(via_subscription.sum()),
             "completely_untraceable_tickets": int(
                 completely_untraceable.sum()
             ),
+        },
+        # Breakdowns stay out of the components: gold_sql returns one scalar
+        # column per component, and a list or mapping cannot be compared.
+        evidence={
+            "by_source": by_source,
+            "by_creation_month": {
+                month: int(count) for month, count in by_month.items()
+            },
         },
     )
 
