@@ -1,0 +1,134 @@
+policy: independent-authoring-v2
+assignments:
+  id_customer_count_2025:
+    split: dev
+    reason: Public development question; available for context development.
+  id_pre_migration_shopify:
+    split: dev
+    reason: Public development question; available for context development.
+  id_multi_source_gmv_2024:
+    split: dev
+    reason: Public development question; available for context development.
+  cust_current_customers_2025:
+    split: dev
+    reason: Public development question; available for context development.
+  cust_new_customers_q2_2026:
+    split: dev
+    reason: Public development question; available for context development.
+  cust_multi_channel_2022:
+    split: dev
+    reason: Public development question; available for context development.
+  diag_consumer_orders_dip_2023_03:
+    split: dev
+    reason: Public development question; available for context development.
+  diag_aov_drop_2024_09:
+    split: dev
+    reason: Public development question; available for context development.
+  diag_subscription_starts_dip_2025:
+    split: dev
+    reason: Public development question; available for context development.
+  diag_enterprise_churn_2022_q4:
+    split: dev
+    reason: Public development question; available for context development.
+  diag_new_d2c_drop_2026_02:
+    split: dev
+    reason: Public development question; available for context development.
+  mkt_d2c_cac_h1_2026:
+    split: dev
+    reason: Public development question; available for context development.
+  mkt_new_d2c_customers_q1_2026:
+    split: dev
+    reason: Public development question; available for context development.
+  mkt_ad_spend_by_platform_2025:
+    split: dev
+    reason: Public development question; available for context development.
+  mkt_btb15_usage_2024:
+    split: dev
+    reason: Public development question; available for context development.
+  mkt_category_margin_2025:
+    split: dev
+    reason: Public development question; available for context development.
+  mkt_paper_order_gmv_2025:
+    split: dev
+    reason: Public development question; available for context development.
+  ops_open_tickets_2026_06_30:
+    split: dev
+    reason: Public development question; available for context development.
+  ops_shipments_in_transit_2026_06_30:
+    split: dev
+    reason: Public development question; available for context development.
+  ops_tickets_by_category_2025:
+    split: dev
+    reason: Public development question; available for context development.
+  rev_q1_2024_unqualified:
+    split: dev
+    reason: Public development question; available for context development.
+  rev_q1_2024_marketing_persona:
+    split: dev
+    reason: Public development question; available for context development.
+  rev_q1_2024_collected:
+    split: dev
+    reason: Public development question; available for context development.
+  rev_fy2025_gmv:
+    split: dev
+    reason: Public development question; available for context development.
+  rev_q2_2026_net:
+    split: dev
+    reason: Public development question; available for context development.
+  rev_q4_2025_billed:
+    split: dev
+    reason: Public development question; available for context development.
+  rev_last_quarter:
+    split: dev
+    reason: Public development question; available for context development.
+  rev_ytd_growth_2026:
+    split: dev
+    reason: Public development question; available for context development.
+  rev_five_measures_by_quarter_2025:
+    split: dev
+    reason: Public development question; available for context development.
+  rev_orders_q2_2026:
+    split: dev
+    reason: Public development question; available for context development.
+  rev_marketplace_take_q2_2026:
+    split: dev
+    reason: Public development question; available for context development.
+  rev_d2c_gmv_by_year:
+    split: dev
+    reason: Public development question; available for context development.
+  rev_recognized_by_channel_2025:
+    split: dev
+    reason: Public development question; available for context development.
+  sub_active_2025_12_31:
+    split: dev
+    reason: Public development question; available for context development.
+  sub_active_by_generation_2025_12_31:
+    split: dev
+    reason: Public development question; available for context development.
+  sub_renewal_rate_2025:
+    split: dev
+    reason: Public development question; available for context development.
+  sub_new_subscriptions_2025:
+    split: dev
+    reason: Public development question; available for context development.
+  sub_churn_by_segment_2022:
+    split: dev
+    reason: Public development question; available for context development.
+  sub_growth_price_paid_2025:
+    split: dev
+    reason: Public development question; available for context development.
+  na_gift_card_revenue_2025:
+    split: dev
+    reason: Public development question; available for context development.
+  na_nps_q2_2026:
+    split: dev
+    reason: Public development question; available for context development.
+  na_store_visits_2025:
+    split: dev
+    reason: Public development question; available for context development.
+  na_revenue_september_2026:
+    split: dev
+    reason: Public development question; available for context development.
+  na_email_open_rate_btb:
+    split: dev
+    reason: Public development question; available for context development.
