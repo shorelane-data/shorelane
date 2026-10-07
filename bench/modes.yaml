@@ -34,7 +34,7 @@ warehouse:
 # prompt hints at context another mode lacks.
 preamble: >-
   You are answering a question about Shorelane Commerce, an office-supplies
-  business. Query the BigQuery dataset `{project}.{dataset}` (data as of {as_of})
+  business. Query the BigQuery dataset `{project}.{dataset}` (data as of {as_of}; today is {as_of})
   with the SQL tool you have been given; it is read-only. Your working directory
   may contain project files you can use.
 
