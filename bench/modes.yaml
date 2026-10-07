@@ -61,11 +61,14 @@ sources:
 
   context:
     repo: https://github.com/shorelane-data/shorelane-analytics-context.git
-    # The context under test, frozen. 6298880 is main after the customers,
-    # marketing and subscriptions interviews (analytics-context #6-#8), the first
-    # pin with all four domains filled in. Holdout questions are written only
-    # after this pin; any later context edit is a new pin, never a silent change.
-    commit: 6298880a39f2426174e07cabd7ef567c7efe213c
+    # The context under test, frozen. 3e2b925 is main after analytics-context #9,
+    # which aligns marketing category gross margin with the Marketing dashboard
+    # and fct_order_lines (d2c and marketplace lines; marketplace at retail is
+    # product mix, not Shorelane earnings). The previous pin, 6298880, was main
+    # after the customers, marketing and subscriptions interviews (#6-#8).
+    # Holdout questions are written only after this pin; any later context edit
+    # is a new pin, never a silent change.
+    commit: 3e2b925ba21598daaf902ee59c64d2c96eb06bb4
     mount: context
     include:
       - company/**
