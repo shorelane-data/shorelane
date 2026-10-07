@@ -685,6 +685,201 @@ def multi_stripe_id_customers(t: Tables, *, as_of: str, cohort_start: str, cohor
         },
     )
 
+@deriver
+def zendesk_tickets_unlinked(t: Tables, *, as_of: str) -> Derived:
+    """Unresolved requester mappings, with indirect-linkage checks.
+
+    Includes all ticket statuses and account types. Customer identity
+    requires a visible source record, visible crosswalk mapping, and
+    visible canonical customer. Related orders/subscriptions provide
+    separate fallback linkage.
+    """
+    cutoff = _ts(as_of)
+    if cutoff > _ts("2026-08-31"):
+        raise ValueError("as_of exceeds the frozen bench cutoff")
+
+    # Match staging's inclusive calendar-date semantics.
+    v = visible_tables(dict(t), cutoff + pd.Timedelta(days=1)
+                       - pd.Timedelta(nanoseconds=1))
+
+    tickets = v["zendesk__tickets"].copy()
+    if tickets.ticket_id.isna().any() or tickets.ticket_id.duplicated().any():
+        raise ValueError("ticket_id must be non-null and unique")
+
+    customers = v["app_db__customers"]
+    canonical_ids = customers.app_db_customer_id.dropna()
+
+    source_tables = (
+        ("app_db", "app_db__customers", "app_db_customer_id"),
+        ("stripe", "stripe__customers", "stripe_customer_id"),
+        ("shopify", "shopify__customers", "shopify_customer_id"),
+        ("salesforce", "salesforce__customers", "salesforce_customer_id"),
+    )
+    aliases = pd.concat([
+        pd.DataFrame({
+            "source_system": system,
+            "source_customer_id": v[table][key].astype("string"),
+        })
+        for system, table, key in source_tables
+    ], ignore_index=True).dropna().drop_duplicates()
+
+    keys = ["source_system", "source_customer_id"]
+    crosswalk = v["app_db__customer_id_crosswalk"]
+    resolved_keys = (
+        crosswalk.loc[
+            crosswalk.app_db_customer_id.isin(canonical_ids), keys
+        ]
+        .dropna()
+        .merge(aliases, on=keys, how="inner")
+        .drop_duplicates()
+        .rename(columns={
+            "source_system": "requester_source_system",
+            "source_customer_id": "requester_source_id",
+        })
+        .assign(requester_resolved=True)
+    )
+    tickets = tickets.merge(
+        resolved_keys,
+        on=["requester_source_system", "requester_source_id"],
+        how="left",
+        validate="many_to_one",
+    )
+    unlinked = tickets.loc[tickets.requester_resolved.isna()].copy()
+
+    order_ids = v["app_db__orders"].loc[
+        v["app_db__orders"].customer_id.isin(canonical_ids), "order_id"
+    ].dropna()
+    subscription_ids = v["app_db__subscriptions"].loc[
+        v["app_db__subscriptions"].customer_id.isin(canonical_ids),
+        "subscription_id",
+    ].dropna()
+
+    via_order = unlinked.related_order_id.isin(order_ids)
+    via_subscription = unlinked.related_subscription_id.isin(subscription_ids)
+    completely_untraceable = ~(via_order | via_subscription)
+
+    def date_text(series, operation):
+        if series.empty:
+            return None
+        return getattr(series, operation)().date().isoformat()
+
+    by_source = []
+    for source, group in unlinked.groupby(
+        "requester_source_system", dropna=False, sort=True
+    ):
+        by_source.append({
+            "source_system": None if pd.isna(source) else str(source),
+            "tickets": int(len(group)),
+            "first_created_date": date_text(group.created_at, "min"),
+            "last_created_date": date_text(group.created_at, "max"),
+        })
+
+    by_month = (
+        unlinked.created_at.dt.to_period("M")
+        .astype(str).value_counts().sort_index()
+    )
+
+    return Derived(
+        value=int(len(unlinked)),
+        components={
+            "first_created_date": date_text(unlinked.created_at, "min"),
+            "last_created_date": date_text(unlinked.created_at, "max"),
+            "by_source": by_source,
+            "by_creation_month": {
+                month: int(count) for month, count in by_month.items()
+            },
+            "linked_via_order": int(via_order.sum()),
+            "linked_via_subscription": int(via_subscription.sum()),
+            "completely_untraceable_tickets": int(
+                completely_untraceable.sum()
+            ),
+        },
+    )
+
+
+@deriver
+def tickets_vs_orders_monthly(
+    t: Tables,
+    *,
+    target_month: str,
+    as_of: str,
+) -> Derived:
+    """Compare orders and ticket coverage for three complete calendar months.
+
+    Orders follow fct_orders eligibility and canonical-channel rules.
+    Tickets use created_at, matching stg_tickets.created_date.
+    Daily presence is evidence of coverage, not proof of completeness.
+    """
+    target = pd.Period(target_month, freq="M")
+    months = [target - 1, target, target + 1]
+    cutoff = _ts(as_of).normalize()
+
+    if cutoff > _ts("2026-08-31"):
+        raise ValueError("as_of exceeds the benchmark boundary")
+    if months[-1].end_time.normalize() > cutoff:
+        raise ValueError("All comparison months must end on or before as_of")
+
+    start = months[0].start_time.strftime("%Y-%m-%d")
+    end = months[-1].end_time.strftime("%Y-%m-%d")
+
+    o = orders(t)
+    o = o[_between(o.order_date, start, end)].copy()
+    k = t["zendesk__tickets"]
+    k = k[_between(k.created_at, start, end)].copy()
+
+    order_month = _day(o.order_date).dt.to_period("M")
+    ticket_days = _day(k.created_at)
+    ticket_month = ticket_days.dt.to_period("M")
+
+    monthly = []
+    for month in months:
+        mo = o.loc[order_month == month]
+        mk = k.loc[ticket_month == month]
+        days = ticket_days.loc[ticket_month == month]
+
+        monthly.append({
+            "month": str(month),
+            "orders": int(mo.order_id.nunique()),
+            "d2c_orders": int(
+                mo.loc[mo.channel == "d2c", "order_id"].nunique()
+            ),
+            "tickets": int(mk.ticket_id.nunique()),
+            "days_with_tickets": int(days.nunique()),
+            "calendar_days": int(month.days_in_month),
+            "first_ticket": (
+                days.min().strftime("%Y-%m-%d") if not days.empty else None
+            ),
+            "last_ticket": (
+                days.max().strftime("%Y-%m-%d") if not days.empty else None
+            ),
+        })
+
+    previous, current, following = monthly
+
+    return Derived(
+        evidence={
+            "target_month": str(target),
+            "as_of": cutoff.strftime("%Y-%m-%d"),
+            "monthly": monthly,
+            "target_orders_below_previous_month": (
+                current["orders"] < previous["orders"]
+            ),
+            "target_d2c_orders_below_previous_month": (
+                current["d2c_orders"] < previous["d2c_orders"]
+            ),
+            "target_month_has_no_tickets": current["tickets"] == 0,
+            "target_has_tickets_every_day": (
+                current["days_with_tickets"] == current["calendar_days"]
+            ),
+            "caveats": [
+                "Daily ticket presence does not prove ingestion completeness.",
+                "Ticket volume need not move proportionally with order volume.",
+                "These aggregates do not establish an outage or migration cause.",
+                "A dip in a differently filtered order series needs its own evidence.",
+            ],
+        },
+    )
+
 
 # --------------------------------------------------------------------------- customers
 
