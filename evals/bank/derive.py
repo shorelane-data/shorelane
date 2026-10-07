@@ -930,6 +930,83 @@ def category_margin(t: Tables, *, start: str, end: str) -> Derived:
         rows=[[c, _money(r.rev), _money(r.rev - r.cost), _ratio((r.rev - r.cost) / r.rev)] for c, r in g.iterrows()],
     )
 
+@deriver
+def supplier_product_sales_distribution(
+    t: Tables, *, start: str, end: str
+) -> Derived:
+    """Supplier shares of product sales over inclusive calendar dates.
+
+    Includes real-customer product order lines. Does not measure company
+    revenue shares or predict losses during a supplier outage.
+    """
+    from decimal import Decimal, ROUND_HALF_UP
+
+    lines = t["app_db__order_lines"].copy()
+    lines = lines[lines.order_id.isin(orders(t).order_id)].copy()
+
+    # fct_order_lines uses the line creation date.
+    lines["order_date"] = pd.to_datetime(lines.created_at)
+    lines = lines[_between(lines.order_date, start, end)].copy()
+
+    lines = lines.merge(
+        t["app_db__products"][["sku", "supplier_id", "category"]],
+        on="sku",
+        how="left",
+        validate="many_to_one",
+    )
+    if lines[["supplier_id", "category", "line_amount"]].isna().any().any():
+        raise ValueError("Incomplete supplier/category/amount attribution")
+
+    # Match staging's BigQuery NUMERIC scale before aggregation.
+    lines["sales"] = lines.line_amount.map(
+        lambda x: Decimal(str(x)).quantize(
+            Decimal("0.000000001"), rounding=ROUND_HALF_UP
+        )
+    )
+    total = sum(lines.sales, Decimal("0"))
+
+    grouped = (
+        lines.groupby(["supplier_id", "category"], as_index=False)["sales"]
+        .sum()
+        .sort_values(
+            ["sales", "supplier_id", "category"],
+            ascending=[False, True, True],
+        )
+    )
+
+    return Derived(
+        columns=[
+            "supplier_id",
+            "category",
+            "product_sales_usd",
+            "sales_share",
+        ],
+        rows=[
+            [
+                r.supplier_id,
+                r.category,
+                _money(r.sales),
+                _ratio(r.sales / total) if total else None,
+            ]
+            for r in grouped.itertuples(index=False)
+        ],
+        evidence={
+            "start": start,
+            "end": end,
+            # The total stays out of the rows: the scorer grades every unit
+            # column per row, and a total is stated once.
+            "total_product_sales_usd": _money(total),
+            "scope": (
+                "Real-customer product order lines; "
+                "excludes revenue without lines"
+            ),
+            "caveat": (
+                "Trailing product-sales concentration, not company "
+                "revenue shares or predicted outage losses"
+            ),
+        },
+    )
+
 
 @deriver
 def gmv_of_orders_with_category(t: Tables, *, category: str, start: str, end: str) -> Derived:
