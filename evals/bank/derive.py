@@ -219,6 +219,28 @@ def marketplace_take(t: Tables, *, start: str, end: str) -> Derived:
 
 
 @deriver
+def marketplace_gmv_take_rate(t: Tables, *, start: str, end: str) -> Derived:
+    """Marketplace GMV (gross_amount) on orders placed in the window, with our
+    effective, dollar-weighted take rate (net_amount / gross_amount) as a component.
+    Wrong paths: commission dollars reported as GMV, the seller payout share reported
+    as the take rate, and the staging GMV that includes test and internal accounts."""
+    o = orders(t)
+    m = o[(o.channel == "marketplace") & _between(o.order_date, start, end)]
+    raw = all_orders(t)
+    raw_m = raw[(raw.channel == "marketplace") & _between(raw.order_date, start, end)]
+    rate = m.net_amount.sum() / m.gross_amount.sum()
+    return Derived(
+        value=_money(m.gross_amount.sum()),
+        components={"effective_take_rate": _ratio(rate)},
+        silent_fail={
+            "marketplace_take": _money(m.net_amount.sum()),
+            "seller_payout_share": _ratio(1 - rate),
+            "staging_gmv_including_test_and_internal": _money(raw_m.gross_amount.sum()),
+        },
+    )
+
+
+@deriver
 def d2c_gmv_by_year(t: Tables, *, start: str, end: str) -> Derived:
     """d2c GMV per calendar year at canonical channel grain. Wrong path: grouping
     on the raw label, which drops every pre-rename ('direct') order."""
