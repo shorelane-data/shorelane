@@ -62,6 +62,8 @@ def _component_tol(gold_value: Any, sql_value: Any) -> float:
     decimal place of the more precise side (half-up SQL vs half-even pandas)."""
     if isinstance(gold_value, int):
         return 0
+    if not all(isinstance(_num(v), (int, float)) for v in (gold_value, sql_value)):
+        return 0  # dates and other text compare exactly, as strings
     decimals = max(_decimals(gold_value), _decimals(sql_value))
     return TOLERANCE["usd"] if decimals <= 2 else 10.0 ** -decimals
 
