@@ -31,7 +31,10 @@ warehouse:
 
 # Given to the agent verbatim in every mode. It names the warehouse and says the
 # working directory may hold files; it never says what they are, so no mode's
-# prompt hints at context another mode lacks.
+# prompt hints at context another mode lacks. "today is {as_of}" anchors relative
+# time ("last month", "right now", "last quarter") to the date every gold assumes:
+# without it, an agent reads data as of 08-31 as a complete August and answers for
+# the wrong month.
 preamble: >-
   You are answering a question about Shorelane Commerce, an office-supplies
   business. Query the BigQuery dataset `{project}.{dataset}` (data as of {as_of}; today is {as_of})
