@@ -45,7 +45,7 @@ MODES_PATH = REPO_ROOT / "bench" / "modes.yaml"
 
 # The record format (fields, enums, split rule) lives in evals/bank/qa_record.py,
 # a standalone copy-able verifier; this builder adds what needs the generators.
-from evals.bank.qa_record import SPLITS, assigned_split, validate_record  # noqa: E402
+from evals.bank.qa_record import SPLITS, SPLIT_POLICY, assigned_split, load_split_manifest, validate_record  # noqa: E402
 
 # Parity between the two derivations (generators vs gold_sql), not the scorer's
 # answer tolerance: the runner compares agent answers at display rounding.
@@ -80,11 +80,11 @@ def load_specs(specs_dir: pathlib.Path) -> list[dict]:
 
 # --------------------------------------------------------------------------- validation
 
-def validate_spec(q: dict, bench: dict, split: str) -> list[str]:
+def validate_spec(q: dict, bench: dict, split: str, split_assignments=None) -> list[str]:
     """Structural rules a spec must satisfy before anything is derived (qa_record.py)."""
     from evals.bank.derive import DERIVERS
 
-    return validate_record(q, as_of=bench["as_of"], split=split, derive_fns=DERIVERS)
+    return validate_record(q, as_of=bench["as_of"], split=split, derive_fns=DERIVERS, split_assignments=split_assignments)
 
 
 # --------------------------------------------------------------------------- derivation
@@ -213,16 +213,17 @@ def _object_strings(tables: dict) -> dict:
     return out
 
 
-def build(specs_dir: pathlib.Path, split: str, check_future: bool = True) -> tuple[dict, list[str]]:
+def build(specs_dir: pathlib.Path, split: str, check_future: bool = True, split_manifest: pathlib.Path | None = None) -> tuple[dict, list[str]]:
     from generators import dataset
     from loaders.visibility import visible_tables
 
     bench = bench_config()
     specs = load_specs(specs_dir)
+    assignments = load_split_manifest(split_manifest or specs_dir.parent / "splits.yaml")
     errs = []
     seen = set()
     for q in specs:
-        errs += validate_spec(q, bench, split)
+        errs += validate_spec(q, bench, split, assignments)
         if q.get("id") in seen:
             errs.append(f"{q['id']}: duplicate id")
         seen.add(q.get("id"))
@@ -249,7 +250,8 @@ def build(specs_dir: pathlib.Path, split: str, check_future: bool = True) -> tup
         entries.append(entry)
 
     bank = {
-        "bank_version": 1,
+        "bank_version": 2,
+        "split_policy": SPLIT_POLICY,
         "dataset_version": config.DATASET_VERSION,
         "bench_version": bench["bench_version"],
         "warehouse": bench["dataset"],
@@ -299,17 +301,18 @@ def main(argv: list[str] | None = None) -> int:
     ap.add_argument("--split", choices=SPLITS, default="dev")
     ap.add_argument("--out", type=pathlib.Path, default=None)
     ap.add_argument("--check", action="store_true", help="fail if the committed bank is stale or invalid")
-    ap.add_argument("--which-split", metavar="ID", help="print the split the hash rule assigns to a question id")
+    ap.add_argument("--split-manifest", type=pathlib.Path, default=None)
+    ap.add_argument("--which-split", metavar="ID", help="look up an explicit split assignment")
     args = ap.parse_args(argv)
     if args.which_split:
-        print(assigned_split(args.which_split))
+        print(assigned_split(args.which_split, load_split_manifest(args.split_manifest or args.specs.parent / "splits.yaml")))
         return 0
     out = args.out or BANK_DIR / f"{args.split}.yaml"
     if args.split == "holdout" and out.resolve().is_relative_to(REPO_ROOT):
         print("refusing to write a holdout bank inside the public shorelane repo", file=sys.stderr)
         return 2
 
-    bank, errs = build(args.specs, args.split)
+    bank, errs = build(args.specs, args.split, split_manifest=args.split_manifest)
     if errs:
         print("bank is invalid:", *errs, sep="\n  ", file=sys.stderr)
         return 1

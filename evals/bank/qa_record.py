@@ -12,7 +12,7 @@ A copy is current when its RECORD_FORMAT matches shorelane's.
 
     python qa_record.py check records/                 # every *.yaml under records/
     python qa_record.py check q.yaml --as-of 2026-08-31 --derive-fns ../shorelane/evals/bank/derive.py
-    python qa_record.py which-split mkt_new_metric_2025
+    python qa_record.py which-split mkt_new_metric_2025 --split-manifest splits.yaml
     python qa_record.py export records/ --out ../shorelane/evals/bank/specs --split dev
 
 What this checks is the format. What it cannot check without shorelane's
@@ -54,7 +54,7 @@ Fields (R = required):
   trap                 the plausible-wrong path, in words; required unless trap_tag none
   context_required     artifacts that resolve the trap, prefixed shorelane:, acf: or dbt:;
                        required unless trap_tag is none or unanswerable
-  split             R  dev | holdout, and it must be what the hash rule assigns the id
+  split             R  dev | holdout, and it must match the versioned split manifest
   provenance        R  {source: where it came from, related: a supporting source (optional),
                         context_seeds: [<analytics-context *.seed.yaml names>]}
                        context_seeds is [] once checked and no seed overlaps
@@ -66,7 +66,6 @@ from __future__ import annotations
 
 import argparse
 import datetime as dt
-import hashlib
 import pathlib
 import re
 import sys
@@ -75,7 +74,7 @@ from typing import Any, Iterable
 import yaml
 
 # Bump when a rule changes; copies in other repos compare against it.
-RECORD_FORMAT = "1.0"
+RECORD_FORMAT = "1.1"
 
 BENCH_AS_OF = "2026-08-31"   # bench v1 warehouse as_of (shorelane bench/modes.yaml)
 
@@ -104,38 +103,31 @@ GOLD_KEYS = {"kind", "unit", "units", "measure", "derive", "must", "must_not", "
 SCOPE_KEYS = {"window", "at", "question_as_of"}
 PROVENANCE_KEYS = {"source", "related", "context_seeds"}
 
-# Split assignment. A question's split is decided by its id, not by its author:
-# sha256(id) lands in dev for the lowest DEV_SHARE of the hash space, holdout for
-# the rest. Pick the id BEFORE hashing it, for what the question asks; re-rolling
-# ids to steer a question into a split defeats the rule.
-DEV_SHARE = 0.40
-# Public before the rule was adopted (2026-09-29), so dev whatever their hash.
-# Never add to this list.
-GRANDFATHERED_DEV = frozenset({
-    "cust_current_customers_2025", "cust_multi_channel_2022", "cust_new_customers_q2_2026",
-    "diag_aov_drop_2024_09", "diag_consumer_orders_dip_2023_03", "diag_enterprise_churn_2022_q4",
-    "diag_new_d2c_drop_2026_02", "diag_subscription_starts_dip_2025",
-    "id_customer_count_2025", "id_multi_source_gmv_2024", "id_pre_migration_shopify",
-    "mkt_ad_spend_by_platform_2025", "mkt_btb15_usage_2024", "mkt_category_margin_2025",
-    "mkt_d2c_cac_h1_2026", "mkt_new_d2c_customers_q1_2026", "mkt_paper_order_gmv_2025",
-    "na_email_open_rate_btb", "na_gift_card_revenue_2025", "na_nps_q2_2026",
-    "na_revenue_september_2026", "na_store_visits_2025",
-    "ops_open_tickets_2026_06_30", "ops_shipments_in_transit_2026_06_30", "ops_tickets_by_category_2025",
-    "rev_d2c_gmv_by_year", "rev_five_measures_by_quarter_2025", "rev_fy2025_gmv", "rev_last_quarter",
-    "rev_marketplace_take_q2_2026", "rev_orders_q2_2026", "rev_q1_2024_collected",
-    "rev_q1_2024_marketing_persona", "rev_q1_2024_unqualified", "rev_q2_2026_net", "rev_q4_2025_billed",
-    "rev_recognized_by_channel_2025", "rev_ytd_growth_2026",
-    "sub_active_2025_12_31", "sub_active_by_generation_2025_12_31", "sub_churn_by_segment_2022",
-    "sub_growth_price_paid_2025", "sub_new_subscriptions_2025", "sub_renewal_rate_2025",
-})
+# Split policy v2: development exposure, recorded in a versioned manifest.
+# Keep private holdout IDs in the private repository, never in this module.
+SPLIT_POLICY = "independent-authoring-v2"
 
 
-def assigned_split(qid: str) -> str:
-    """The split the hash rule assigns to a question id."""
-    if qid in GRANDFATHERED_DEV:
-        return "dev"
-    bucket = int(hashlib.sha256(qid.encode()).hexdigest(), 16) / 16 ** 64
-    return "dev" if bucket < DEV_SHARE else "holdout"
+def load_split_manifest(path: pathlib.Path) -> dict[str, str]:
+    doc = yaml.safe_load(path.read_text())
+    if not isinstance(doc, dict) or doc.get("policy") != SPLIT_POLICY:
+        raise ValueError(f"{path}: expected split policy {SPLIT_POLICY}")
+    assignments = doc.get("assignments")
+    if not isinstance(assignments, dict) or not assignments:
+        raise ValueError(f"{path}: assignments must be a non-empty mapping")
+    for qid, item in assignments.items():
+        if not isinstance(qid, str) or not ID_RE.fullmatch(qid):
+            raise ValueError(f"{path}: invalid question ID {qid!r}")
+        if not isinstance(item, dict) or item.get("split") not in SPLITS or not item.get("reason"):
+            raise ValueError(f"{path}: {qid}: split and reason required")
+    return {qid: item["split"] for qid, item in assignments.items()}
+
+
+def assigned_split(qid: str, assignments: dict[str, str]) -> str:
+    """Look up an explicit assignment; unknown IDs must be reviewed first."""
+    if qid not in assignments:
+        raise ValueError(f"{qid}: absent from the split manifest")
+    return assignments[qid]
 
 
 def _date(v: Any) -> str | None:
@@ -157,7 +149,8 @@ def _str_list(v: Any) -> bool:
 
 
 def validate_record(q: dict, *, as_of: str = BENCH_AS_OF, split: str | None = None,
-                    derive_fns: Iterable[str] | None = None) -> list[str]:
+                    derive_fns: Iterable[str] | None = None,
+                    split_assignments: dict[str, str] | None = None) -> list[str]:
     """Format errors for one record, each prefixed with its id. Empty means valid.
 
     as_of: the bench warehouse as_of no pinned date may pass.
@@ -198,10 +191,12 @@ def validate_record(q: dict, *, as_of: str = BENCH_AS_OF, split: str | None = No
         errs.append(f"split {q['split']!r} not in {SPLITS}")
     elif split and q["split"] != split:
         errs.append(f"split {q['split']!r} does not match this build ({split!r})")
-    if isinstance(q["id"], str) and ID_RE.match(q["id"]) and q["split"] in SPLITS \
-            and q["split"] != assigned_split(q["id"]):
-        errs.append(f"the hash rule assigns this id to {assigned_split(q['id'])!r}, not {q['split']!r} "
-                    "(python qa_record.py which-split <id>)")
+    if split_assignments is not None:
+        if q["id"] not in split_assignments:
+            errs.append("id is absent from the split manifest")
+        elif q["split"] != split_assignments[q["id"]]:
+            errs.append(f"split {q['split']!r} disagrees with the split manifest "
+                        f"({split_assignments[q['id']]!r})")
 
     gold = q["gold"]
     if not isinstance(gold, dict):
@@ -416,21 +411,24 @@ def main(argv: list[str] | None = None) -> int:
         p.add_argument("paths", nargs="+", type=pathlib.Path)
         p.add_argument("--as-of", default=BENCH_AS_OF, help=f"bench as_of (default {BENCH_AS_OF})")
         p.add_argument("--split", choices=SPLITS, help="only this split is allowed")
+        p.add_argument("--split-manifest", type=pathlib.Path, required=True)
         p.add_argument("--derive-fns", type=pathlib.Path, metavar="DERIVE_PY",
                        help="shorelane's evals/bank/derive.py, to check derivation names")
     exp.add_argument("--out", type=pathlib.Path, required=True, help="directory for <domain>.yaml spec files")
-    ws = sub.add_parser("which-split", help="print the split the hash rule assigns to ids")
+    ws = sub.add_parser("which-split", help="print the split the manifest assigns to ids")
     ws.add_argument("ids", nargs="+")
+    ws.add_argument("--split-manifest", type=pathlib.Path, required=True)
     args = ap.parse_args(argv)
 
+    assignments = load_split_manifest(args.split_manifest)
     if args.cmd == "which-split":
         for qid in args.ids:
-            print(f"{qid}\t{assigned_split(qid)}")
+            print(f"{qid}\t{assigned_split(qid, assignments)}")
         return 0
 
     records = load(args.paths)
     fns = derive_fns_from(args.derive_fns) if args.derive_fns else None
-    errs = validate_records(records, as_of=args.as_of, split=args.split, derive_fns=fns)
+    errs = validate_records(records, as_of=args.as_of, split=args.split, derive_fns=fns, split_assignments=assignments)
     for w in warnings(records):
         print(f"warning: {w}", file=sys.stderr)
     for e in errs:
@@ -439,7 +437,7 @@ def main(argv: list[str] | None = None) -> int:
         print(f"{len(records)} records, {len(errs)} errors (format {RECORD_FORMAT})", file=sys.stderr)
         return 1
     if args.cmd == "export":
-        return export(records, args.out, as_of=args.as_of, split=args.split, derive_fns=fns)
+        return export(records, args.out, as_of=args.as_of, split=args.split, derive_fns=fns, split_assignments=assignments)
     print(f"{len(records)} records OK (format {RECORD_FORMAT})")
     return 0
 

@@ -58,7 +58,7 @@ CASES = {
     "missing intent": broken(intent=KeyError),
     "missing domain": broken(domain=KeyError),
     "bad status": broken(status="final"),
-    "split against the hash rule": broken(split="holdout"),
+    "invalid split": broken(split="evaluation"),
     "value gold without gold_sql": broken(gold_sql=KeyError),
     "gold_sql without {bench}": broken(gold_sql="SELECT 1 AS value"),
     "graded number in the record": broken(gold__value=123.0),
@@ -79,8 +79,11 @@ with tempfile.TemporaryDirectory() as tmp:
     shutil.copy(ROOT / "evals" / "bank" / "qa_record.py", tmp / "qa_record.py")
     (tmp / "records").mkdir()
     (tmp / "records" / "new.yaml").write_text(yaml.safe_dump(NEW, sort_keys=False))
+    manifest = yaml.safe_load((SPECS.parent / "splits.yaml").read_text())
+    manifest["assignments"][NEW["id"]] = {"split": "dev", "reason": "Test fixture"}
+    (tmp / "splits.yaml").write_text(yaml.safe_dump(manifest))
     r = subprocess.run([sys.executable, "-I", str(tmp / "qa_record.py"), "check", str(tmp / "records"),
-                        str(SPECS), "--derive-fns", str(ROOT / "evals" / "bank" / "derive.py")],
+                        str(SPECS), "--split-manifest", str(tmp / "splits.yaml"), "--derive-fns", str(ROOT / "evals" / "bank" / "derive.py")],
                        capture_output=True, text=True, cwd=tmp)
     if r.returncode != 0:
         failures.append(f"standalone copy failed: {r.stderr.strip()}")
@@ -123,6 +126,20 @@ with tempfile.TemporaryDirectory() as tmp:
         failures += [f"exported spec rejected: {e}" for q in exported for e in build_bank.validate_spec(q, bench, "dev")]
         if qa_record.export([dict(NEW)], out, as_of=bench["as_of"]) == 0:
             failures.append("export accepted a record whose id is already in the specs")
+
+assignments = {NEW["id"]: "holdout"}
+holdout = dict(NEW, split="holdout")
+if qa_record.validate_record(holdout, derive_fns=DERIVERS, split_assignments=assignments):
+    failures.append("independently authored holdout rejected")
+if not qa_record.validate_record(NEW, split_assignments=assignments):
+    failures.append("manifest disagreement accepted")
+if not qa_record.validate_record(NEW, split_assignments={}):
+    failures.append("unassigned question accepted")
+try:
+    qa_record.assigned_split("unknown", assignments)
+    failures.append("unknown split lookup accepted")
+except ValueError:
+    pass
 
 for f in failures:
     print(f"FAIL {f}")

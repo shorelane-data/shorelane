@@ -84,20 +84,24 @@ fails if any wrong path returns the gold: a trap that does not bite is noise.
 
 ## Splits and the holdout
 
-A question's split is decided by its id, never by its author. `sha256(id)` lands
-in **dev** for the lowest 40% of the hash space and in **holdout** for the rest
-(`assigned_split` in `evals/build_bank.py`), so nobody chooses which questions the
-published score rests on, and anyone can re-check it:
+Split policy v2 (`independent-authoring-v2`) follows development exposure, not
+an ID hash. Questions developed alongside context, published, or used to tune
+context are dev. Independently authored questions and golds reserved from context
+development are holdout. IDs stay unchanged when correcting historical labels.
+
+Each bank has a versioned `splits.yaml` beside `specs/`, containing an explicit
+assignment and reason for every question. The builder requires it and rejects
+missing IDs or disagreement. Private holdout IDs stay in the private manifest.
+Unknown IDs require an explicit assignment; there is no automatic fallback.
 
 ```
-python evals/build_bank.py --which-split rev_q3_2025_gmv    # -> dev or holdout
+python evals/build_bank.py --which-split rev_q3_2025_gmv
 ```
 
-Choose the id for what the question asks, then look up its split and write the
-spec in that repo. Renaming a question until it lands where you want defeats the
-rule. The build fails if a spec's `split` disagrees with its hash. The 44 questions
-that were public before the rule was adopted are grandfathered as dev
-(`GRANDFATHERED_DEV`); that list never grows.
+Earlier banks used a hash partition. Preserve historical runs and their bank
+snapshots; bank version 2 records this new policy, so their scores are not silently
+reinterpreted. A holdout exposed to context development must be retired from the
+untouched evaluation collection.
 
 This repo is public, so it holds **dev** only. The **holdout** lives in the private
 `shorelane-bench` repo until publication, as specs in the same format, reusing
@@ -203,7 +207,7 @@ PyYAML, so it can be copied as is into a repo where questions are drafted:
 ```
 python qa_record.py check records/                            # verify record files
 python qa_record.py check records/ --derive-fns ../shorelane/evals/bank/derive.py
-python qa_record.py which-split <id>                          # dev or holdout, by hash
+python qa_record.py which-split <id> --split-manifest splits.yaml   # dev or holdout, from the manifest
 python qa_record.py export records/ --out ../shorelane/evals/bank/specs --split dev
 python qa_record.py export records/ --out ../shorelane-bench/bank/specs --split holdout
 ```
@@ -220,5 +224,5 @@ derivation (an unknown `derive.fn` needs a new function in `derive.py` first),
 rejects a gold that reads past the as_of or a trap whose silent-fail value equals
 the gold, and `tests/check_bench_golds.py --sql` reproduces the gold with `gold_sql`.
 Export dev records only to this repo, and holdout records only to shorelane-bench:
-the hash rule decides which split a record belongs to.
+the explicit split manifest decides which split a record belongs to.
 
