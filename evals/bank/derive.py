@@ -635,6 +635,128 @@ def avg_price_per_seat_active(t: Tables, *, at: str, plan_id: str) -> Derived:
         silent_fail={"current_catalog_price": float(p.annual_price_per_seat.iloc[-1])},
     )
 
+@deriver
+def legacy_subscribers_migration(
+    t: Tables,
+    *,
+    at: str,
+    current_generation: int,
+    migration_map: Mapping[str, str],
+) -> Derived:
+    """Active legacy subscribers and same-seat migration opportunity.
+
+    Migration uplift assumes full adoption at destination catalog prices,
+    with unchanged seats and no discounts or churn. It is not a forecast.
+    """
+    a = _active_at(subscription_terms(t), at)
+    if a.plan_generation.isna().any():
+        raise ValueError("Active subscriptions have missing plan generations")
+
+    legacy = a[a.plan_generation < current_generation].copy()
+
+    missing = set(legacy.plan_id.unique()) - set(migration_map)
+    if missing:
+        raise ValueError(f"Missing migration mappings: {sorted(missing)}")
+
+    plans = t["app_db__plans"].set_index("plan_id", verify_integrity=True)
+    targets = set(migration_map.values())
+    unknown = targets - set(plans.index)
+    if unknown:
+        raise ValueError(f"Unknown destination plans: {sorted(unknown)}")
+    if targets:
+        generations = plans.loc[sorted(targets), "plan_generation"]
+        if not generations.eq(current_generation).all():
+            raise ValueError("Destinations must belong to current_generation")
+
+    prices = t["app_db__plan_prices"].copy()
+    prices["_effective_day"] = _day(
+        pd.to_datetime(prices.effective_from)
+    )
+    prices = prices[
+        prices.plan_id.isin(targets)
+        & (prices._effective_day <= _ts(at))
+    ]
+    if prices.duplicated(["plan_id", "_effective_day"]).any():
+        raise ValueError("Duplicate destination price effective dates")
+
+    latest = (
+        prices.sort_values("_effective_day")
+        .drop_duplicates("plan_id", keep="last")
+        .set_index("plan_id")["annual_price_per_seat"]
+    )
+    missing_prices = targets - set(latest.index)
+    if missing_prices:
+        raise ValueError(
+            f"No destination price at {at}: {sorted(missing_prices)}"
+        )
+
+    legacy["destination_plan_id"] = legacy.plan_id.map(migration_map)
+    legacy["destination_price"] = legacy.destination_plan_id.map(latest)
+    required = ["seats", "acv", "destination_price"]
+    if legacy[required].isna().any().any():
+        raise ValueError("Missing seats, ACV, or destination prices")
+
+    current_acv = float(legacy.acv.sum())
+    migrated_acv = float(
+        (legacy.seats * legacy.destination_price).sum()
+    )
+    total_subscribers = int(a.customer_id.nunique())
+    legacy_subscribers = int(legacy.customer_id.nunique())
+
+    by_generation = (
+        a.groupby("plan_generation", sort=True)
+        .agg(
+            active_subscribers=("customer_id", "nunique"),
+            seats=("seats", "sum"),
+            acv_under_contract=("acv", "sum"),
+        )
+    )
+
+    return Derived(
+        value=legacy_subscribers,
+        components={
+            "total_active_subscribers": total_subscribers,
+            "legacy_subscriber_share": (
+                _ratio(legacy_subscribers / total_subscribers)
+                if total_subscribers else None
+            ),
+            "legacy_seats": int(legacy.seats.sum()),
+            "legacy_acv": _money(current_acv),
+            "illustrative_migrated_acv": _money(migrated_acv),
+            "illustrative_annual_uplift": _money(
+                migrated_acv - current_acv
+            ),
+            "illustrative_uplift_ratio": (
+                _ratio((migrated_acv - current_acv) / current_acv)
+                if current_acv else None
+            ),
+        },
+        evidence={
+            "at": at,
+            "current_generation": current_generation,
+            "migration_map": dict(migration_map),
+            "by_generation": [
+                {
+                    "plan_generation": int(generation),
+                    "active_subscribers": int(row.active_subscribers),
+                    "seats": int(row.seats),
+                    "acv_under_contract": _money(row.acv_under_contract),
+                }
+                for generation, row in by_generation.iterrows()
+            ],
+            "scenario_assumptions": [
+                "All active legacy terms migrate",
+                "Seats remain unchanged",
+                "Latest destination catalog prices on or before at",
+                "No discounts, churn, or partial adoption",
+                "Migration mapping is illustrative",
+            ],
+        },
+        silent_fail={
+            "count_legacy_seats_as_subscribers": int(legacy.seats.sum()),
+        },
+    )
+
 
 # --------------------------------------------------------------------------- marketing
 
