@@ -644,6 +644,68 @@ def churned_acv_recovery(t: Tables, *, segment: str, start: str, end: str, as_of
 
 
 @deriver
+def first_renewal_nrr(t: Tables, *, start: str, end: str, as_of: str) -> Derived:
+    """Net revenue retention at first renewal for a starting cohort: the ACV of
+    each cohort term's first renewal over the cohort's initial ACV. The cohort is
+    real customers' first terms (no renewed_from link) starting in the window, on
+    any plan generation. Only the term renewed directly from a cohort term counts,
+    and only if it started by `as_of`; a term with no such renewal contributes 0.
+    Every cohort term must end before `as_of` (a term ending on it could only
+    renew after it), or the cohort is not yet due.
+    Wrong paths: dividing by the renewers' initial ACV only, counting every later
+    renewal in the chain, and test and internal accounts left in."""
+    cutoff = _ts(as_of)
+    s = subscription_terms(t)
+    cohort = s[_between(s.term_start, start, end) & s.renewed_from_subscription_id.isna()]
+    if cohort.empty:
+        raise ValueError(f"No first terms started between {start} and {end}")
+    if (cohort.term_end_date >= cutoff).any():
+        raise ValueError(f"Cohort terms ending on or after {as_of} are not yet due for renewal")
+
+    visible = s[s.term_start_date <= cutoff]
+    links = visible[visible.renewed_from_subscription_id.notna()]
+    if links.renewed_from_subscription_id.duplicated().any():
+        raise ValueError("A term can be renewed at most one time")
+    acv = visible.set_index("subscription_id").acv
+    parent = links.set_index("subscription_id").renewed_from_subscription_id
+    first = links[links.renewed_from_subscription_id.isin(cohort.subscription_id)]
+
+    # Every renewal in a cohort term's chain (the wrong path), walking the links.
+    chain_acv, frontier = 0.0, set(first.subscription_id)
+    while frontier:
+        chain_acv += float(acv[sorted(frontier)].sum())
+        frontier = set(parent[parent.isin(frontier)].index)
+
+    initial = float(cohort.acv.sum())
+    renewed = float(first.acv.sum())
+    renewers = cohort[cohort.subscription_id.isin(first.renewed_from_subscription_id)]
+
+    raw = t["app_db__subscriptions"]
+    raw = raw[raw.term_start.pipe(_day) <= cutoff]
+    raw_cohort = raw[_between(raw.term_start, start, end) & raw.renewed_from_subscription_id.isna()]
+    raw_first = raw[raw.renewed_from_subscription_id.isin(raw_cohort.subscription_id)]
+
+    nrr = _ratio(renewed / initial)
+    wrong = {
+        "renewers_only_denominator": _ratio(renewed / renewers.acv.sum()) if len(renewers) else None,
+        "all_chain_renewals": _ratio(chain_acv / initial),
+        "including_test_and_internal": _ratio(raw_first.acv.sum() / raw_cohort.acv.sum()),
+    }
+    return Derived(
+        value=nrr,
+        components={
+            "initial_acv": _money(initial),
+            "first_renewal_acv": _money(renewed),
+            "cohort_customers": int(cohort.customer_id.nunique()),
+            "renewed_customers": int(renewers.customer_id.nunique()),
+        },
+        # Only wrong paths that change the answer: test accounts may hold no
+        # subscriptions, and a young cohort has no second renewals yet.
+        silent_fail={k: v for k, v in wrong.items() if v is not None and v != nrr},
+    )
+
+
+@deriver
 def avg_price_per_seat_active(t: Tables, *, at: str, plan_id: str) -> Derived:
     """Seat-weighted price actually paid on a plan's active terms at `at`.
     Wrong path: the plan's current catalog price (dim_plans)."""
