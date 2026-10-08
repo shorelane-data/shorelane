@@ -91,7 +91,9 @@ questions:
           fell against the pre-May baseline, because the higher ACV per seat only partly offset fewer
           sign-ups and a plan mix that shifted from Enterprise toward Essentials.
       must_not:
-        - Claims existing or grandfathered subscribers were repriced.
+        # Gen-3 renewals from 2025-05-01 do pay the new price; only grandfathered plans and
+        # terms in progress kept theirs (checked on shorelane_bench_v1, 2026-10-08).
+        - Claims grandfathered (generation-1/2) subscribers were repriced, or that terms in progress were repriced mid-term.
     trap: >
       The cause is a price-table change (app_db__plan_prices), not a sales table.
       Counting all terms started (renewals included) blurs the dip.

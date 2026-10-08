@@ -435,7 +435,8 @@ questions:
       fell against the pre-May baseline, because the higher ACV per seat only partly offset fewer sign-ups
       and a plan mix that shifted from Enterprise toward Essentials.'
     must_not:
-    - Claims existing or grandfathered subscribers were repriced.
+    - Claims grandfathered (generation-1/2) subscribers were repriced, or that terms in progress were
+      repriced mid-term.
     evidence:
       gen3_price_per_seat:
         essentials:
