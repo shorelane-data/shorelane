@@ -13,6 +13,7 @@ questions:
     pinned_scope: {question_as_of: 2025-12-31}
     gold:
       kind: value
+      asked: [unresolved_source_id_count, resolution_null_rate]
       unit: count
       measure: ordered_canonical_customer_count
       derive:
@@ -60,6 +61,7 @@ questions:
     pinned_scope: {question_as_of: 2025-12-31}
     gold:
       kind: value
+      asked: [pre_migration_shopify_missing_count]
       unit: count
       measure: pre_migration_shopify_resolved_count
       derive:
@@ -99,6 +101,10 @@ questions:
     pinned_scope: {question_as_of: 2025-12-31, window: {start: 2024-01-01, end: 2024-12-31}}
     gold:
       kind: value
+      # Only the order count is asked for now. The gold's customer count is every
+      # multi-source customer, ordered in 2024 or not; agents read "eligible" as the
+      # ones behind the 2024 GMV. Open: fix the gold or the wording, then ask it.
+      asked: [correct_multi_source_order_count]
       unit: usd
       measure: correct_multi_source_gmv
       derive:

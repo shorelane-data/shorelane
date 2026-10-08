@@ -33,6 +33,9 @@ questions:
     components:
       unresolved_source_id_count: 1180
       resolution_null_rate: 0.016626
+    asked:
+    - unresolved_source_id_count
+    - resolution_null_rate
   gold_sql: |
     WITH aliases AS (
       SELECT
@@ -88,6 +91,8 @@ questions:
     measure: pre_migration_shopify_resolved_count
     components:
       pre_migration_shopify_missing_count: 533
+    asked:
+    - pre_migration_shopify_missing_count
   gold_sql: |
     SELECT
       COUNTIF(app_db_customer_id IS NOT NULL AND linked_date <= '2025-12-31') AS value,
@@ -134,6 +139,8 @@ questions:
     components:
       correct_multi_source_order_count: 13020
       multi_source_canonical_customer_count: 22138
+    asked:
+    - correct_multi_source_order_count
   gold_sql: |
     WITH eligible AS (
       SELECT i.app_db_customer_id
@@ -428,7 +435,8 @@ questions:
       fell against the pre-May baseline, because the higher ACV per seat only partly offset fewer sign-ups
       and a plan mix that shifted from Enterprise toward Essentials.'
     must_not:
-    - Claims existing or grandfathered subscribers were repriced.
+    - Claims grandfathered (generation-1/2) subscribers were repriced, or that terms in progress were
+      repriced mid-term.
     evidence:
       gen3_price_per_seat:
         essentials:
@@ -820,6 +828,8 @@ questions:
     components:
       discount_dollars: 43518.15
       promo_gmv: 246600.08
+    asked:
+    - discount_dollars
   gold_sql: |
     WITH promo AS (
       SELECT order_id, gross_amount

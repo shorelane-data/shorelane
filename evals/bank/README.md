@@ -57,6 +57,11 @@ Authored in a spec (the domain comes from the spec file):
 | `gold.unit` / `gold.units` | `usd`, `count` or `ratio`, for a value or each result-set measure column |
 | `gold.must` / `must_not` | the judge's criteria (diagnostics) |
 | `gold.reason` / `absent_terms` | why the question is unanswerable; terms that must not appear in any raw column or table name |
+| `gold.asked` | (1.2) what the prompt explicitly asks for, and the only things graded: component names for a value gold (the headline is always graded), column names for a result set (label columns included). Anything else is a supporting number, reported but not graded |
+| `gold.accept` | (1.2, value golds) `[{path, reason}]`: other defensible readings, scored `acceptable`. `path` names an alternative the derivation emits (`Derived.alternatives`), so accepted values are derived too, never typed. The build rejects one equal to the gold or to a silent-fail value |
+| `gold.headline` | (1.2, result sets) `{row: {<label column>: <value>}, column: <unit column>}`: the one cell a single-number answer should equal. Must pick exactly one derived row |
+| `gold.criteria_for_partial` | (1.2, refusals) `{must, must_not}`: the question is partly answerable, so an answer is judged against these criteria instead of failed for not refusing |
+| `lint_waive` | (1.2) `[{check, reason}]`: gold-lint findings the author reviewed and accepts |
 | `gold_sql` | BigQuery SQL against the marts, tables written as `` `{bench}.<table>` ``; a value query returns a `value` column plus one column per component |
 | `trap` | the plausible-wrong path, in words (required unless `trap_tag: none`) |
 | `context_required` | the human-confirmed artifacts that resolve the trap: `shorelane:` (this repo's `context/`), `acf:` (shorelane-analytics-context), `dbt:` (the dbt project) |

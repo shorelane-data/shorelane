@@ -44,10 +44,26 @@ Fields (R = required):
   pinned_scope         {window: {start, end}} | {at: date} | {question_as_of: date};
                        inclusive dates, none after the bench as_of
   gold              R  kind: value | result_set | criteria | refusal
-                         value:      unit (usd|count|ratio), derive {fn, params}, measure?
-                         result_set: units {column: usd|count|ratio}, derive {fn, params}
+                         value:      unit (usd|count|ratio), derive {fn, params}, measure?,
+                                     asked [..]?, accept [..]?
+                         result_set: units {column: usd|count|ratio}, derive {fn, params},
+                                     asked [..]?, headline?
                          criteria:   must [..] (non-empty), must_not [..], derive {fn, params}
-                         refusal:    reason, absent_terms [..]
+                         refusal:    reason, absent_terms [..], criteria_for_partial?
+                       Optional scoring fields (1.2), none of them a number:
+                         asked       what the prompt explicitly asks for; only these are graded.
+                                     value: gold component names (the headline is always graded);
+                                     result_set: column names, label columns included. Without
+                                     it every component is supporting and every unit column graded
+                         accept      [{path, reason}]: other defensible readings, scored
+                                     `acceptable`. `path` names an alternative the derivation
+                                     emits (Derived.alternatives); never a typed number
+                         headline    result_set: {row: {<label column>: <value>, ..}, column: <unit
+                                     column>}, the one cell a single-number answer should equal
+                         criteria_for_partial  refusal: {must [..], must_not [..]}. The question is
+                                     partly answerable: answers are judged against these criteria
+                                     instead of being failed for not refusing
+  lint_waive           [{check, reason}]: gold-lint findings the author has reviewed and accepts
   gold_sql             BigQuery SQL over `{bench}.<table>`; required for value and
                        result_set (the second, independent derivation). A value
                        query returns a `value` column plus one per component
@@ -74,7 +90,7 @@ from typing import Any, Iterable
 import yaml
 
 # Bump when a rule changes; copies in other repos compare against it.
-RECORD_FORMAT = "1.1"
+RECORD_FORMAT = "1.2"
 
 BENCH_AS_OF = "2026-08-31"   # bench v1 warehouse as_of (shorelane bench/modes.yaml)
 
@@ -96,10 +112,14 @@ ID_RE = re.compile(r"^[a-z][a-z0-9_]*$")
 
 RECORD_KEYS = {
     "id", "tier", "trap_tag", "prompt", "persona", "pinned_scope", "gold", "gold_sql",
-    "trap", "context_required", "split", "provenance", "intent", "status",
+    "trap", "context_required", "split", "provenance", "intent", "status", "lint_waive",
 }
 REQUIRED_KEYS = ("id", "tier", "trap_tag", "prompt", "intent", "status", "gold", "split", "provenance")
-GOLD_KEYS = {"kind", "unit", "units", "measure", "derive", "must", "must_not", "reason", "absent_terms"}
+GOLD_KEYS = {"kind", "unit", "units", "measure", "derive", "must", "must_not", "reason", "absent_terms",
+             "asked", "accept", "headline", "criteria_for_partial"}
+# Which gold kinds may carry each 1.2 scoring field.
+SCORING_FIELDS = {"asked": ("value", "result_set"), "accept": ("value",), "headline": ("result_set",),
+                  "criteria_for_partial": ("refusal",)}
 SCOPE_KEYS = {"window", "at", "question_as_of"}
 PROVENANCE_KEYS = {"source", "related", "context_seeds"}
 
@@ -246,6 +266,13 @@ def validate_record(q: dict, *, as_of: str = BENCH_AS_OF, split: str | None = No
         if gold.get("absent_terms") is not None and not _str_list(gold["absent_terms"]):
             errs.append("gold.absent_terms must be a list of terms")
 
+    errs += _scoring_field_errors(gold, kind)
+    waive = q.get("lint_waive")
+    if waive is not None and not (isinstance(waive, list) and all(
+            isinstance(w, dict) and set(w) == {"check", "reason"} and isinstance(w["check"], str)
+            and isinstance(w["reason"], str) and w["reason"].strip() for w in waive)):
+        errs.append("lint_waive must be a list of {check, reason}, each with a reason")
+
     if q["trap_tag"] != "none" and not (q.get("trap") or "").strip():
         errs.append("a trapped question documents its plausible-wrong path in `trap`")
     if q["trap_tag"] not in ("none", "unanswerable") and not q.get("context_required"):
@@ -296,6 +323,38 @@ def validate_record(q: dict, *, as_of: str = BENCH_AS_OF, split: str | None = No
             errs.append("provenance.context_seeds must be a list of analytics-context seed file names "
                         "(`[]` once checked against the pinned context and none overlaps)")
     return [f"{qid}: {e}" for e in errs]
+
+
+def _scoring_field_errors(gold: dict, kind: Any) -> list[str]:
+    """The 1.2 scoring fields: allowed for the gold kind, and well formed."""
+    errs = []
+    for key, kinds in SCORING_FIELDS.items():
+        if key in gold and kind not in kinds:
+            errs.append(f"gold.{key} applies only to {' / '.join(kinds)} golds")
+    if "asked" in gold and not (_str_list(gold["asked"]) and gold["asked"]):
+        errs.append("gold.asked must be a non-empty list of component or column names")
+    if kind == "result_set" and _str_list(gold.get("asked")) and isinstance(gold.get("units"), dict) \
+            and not set(gold["asked"]) & set(gold["units"]):
+        errs.append("gold.asked names no graded (unit) column")
+    if "accept" in gold:
+        acc = gold["accept"]
+        if not isinstance(acc, list) or not acc or not all(
+                isinstance(a, dict) and set(a) == {"path", "reason"} and isinstance(a["path"], str)
+                and ID_RE.match(a["path"]) and isinstance(a["reason"], str) and a["reason"].strip() for a in acc):
+            errs.append("gold.accept must be a list of {path: <derivation alternative>, reason: <why defensible>}")
+    if "headline" in gold:
+        h = gold["headline"]
+        if not (isinstance(h, dict) and set(h) == {"row", "column"} and isinstance(h["row"], dict) and h["row"]
+                and isinstance(h["column"], str)):
+            errs.append("gold.headline must be {row: {<label column>: <value>}, column: <unit column>}")
+        elif isinstance(gold.get("units"), dict) and h["column"] not in gold["units"]:
+            errs.append(f"gold.headline.column {h['column']!r} is not a unit column")
+    if "criteria_for_partial" in gold:
+        c = gold["criteria_for_partial"]
+        if not (isinstance(c, dict) and set(c) <= {"must", "must_not"} and c.get("must") and _str_list(c["must"])
+                and (c.get("must_not") is None or _str_list(c["must_not"]))):
+            errs.append("gold.criteria_for_partial must be {must: [..] (non-empty), must_not: [..]}")
+    return errs
 
 
 def validate_records(records: list[dict], **kw) -> list[str]:
