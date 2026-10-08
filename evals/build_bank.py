@@ -151,10 +151,28 @@ def render_entry(q: dict, d, bench: dict) -> tuple[dict, list[str]]:
         for label, wrong in d.silent_fail.items():
             if not _differs(wrong, d.value, TOLERANCE[unit]):
                 errs.append(f"silent-fail path {label!r} equals the gold: the trap does not bite")
+        if q["gold"].get("accept"):
+            accept, e = _accept(q["gold"]["accept"], d, unit)
+            gold["accept"] = accept
+            errs += e
     elif kind == "result_set":
         gold.update(columns=list(d.columns), rows=_clean(d.rows), units=dict(q["gold"]["units"]))
         if not d.rows:
             errs.append("result_set gold derived no rows")
+        missing = sorted(set(gold["units"]) - set(gold["columns"]))
+        if missing:
+            errs.append(f"gold.units names columns the derivation does not return: {missing}")
+        if q["gold"].get("headline"):
+            h = q["gold"]["headline"]
+            idx = {c: i for i, c in enumerate(gold["columns"])}
+            unknown = sorted(set(h["row"]) - set(idx))
+            hits = [] if unknown else [r for r in gold["rows"]
+                                       if all(str(r[idx[c]]) == str(v) for c, v in h["row"].items())]
+            if unknown:
+                errs.append(f"gold.headline.row names unknown columns {unknown}")
+            elif len(hits) != 1:
+                errs.append(f"gold.headline.row matches {len(hits)} rows; it must pick exactly one")
+            gold["headline"] = {"row": dict(h["row"]), "column": h["column"]}
     elif kind == "criteria":
         gold.update(must=list(q["gold"]["must"]), must_not=list(q["gold"].get("must_not") or []),
                     evidence=_clean(d.evidence))
@@ -162,6 +180,17 @@ def render_entry(q: dict, d, bench: dict) -> tuple[dict, list[str]]:
         gold.update(reason=q["gold"]["reason"].strip())
         if q["gold"].get("absent_terms"):
             gold["absent_terms"] = list(q["gold"]["absent_terms"])
+        if q["gold"].get("criteria_for_partial"):
+            c = q["gold"]["criteria_for_partial"]
+            gold["criteria_for_partial"] = {"must": list(c["must"]), "must_not": list(c.get("must_not") or [])}
+    if q["gold"].get("asked"):
+        asked = list(q["gold"]["asked"])
+        known = set(gold.get("components") or {}) if kind == "value" else set(gold.get("columns") or [])
+        unknown = sorted(set(asked) - known)
+        if unknown:
+            what = "components" if kind == "value" else "columns"
+            errs.append(f"gold.asked names {what} the derivation does not return: {unknown}")
+        gold["asked"] = asked
     if q["trap_tag"] not in ("none", "unanswerable") and kind in ("value", "result_set") and not d.silent_fail:
         errs.append("a trapped question needs at least one derived silent-fail value")
 
@@ -191,11 +220,31 @@ def render_entry(q: dict, d, bench: dict) -> tuple[dict, list[str]]:
     return entry, [f"{q['id']}: {e}" for e in errs]
 
 
+def _accept(accept: list[dict], d, unit: str) -> tuple[list[dict], list[str]]:
+    """gold.accept rendered with each alternative's derived value. An accepted reading must
+    be an alternative the derivation names, differ from the gold, and never equal a
+    silent-fail value: a trap reading can't also be a defensible one."""
+    out, errs = [], []
+    for a in accept:
+        if a["path"] not in d.alternatives:
+            errs.append(f"gold.accept path {a['path']!r} is not an alternative the derivation emits "
+                        f"({sorted(d.alternatives) or 'none'})")
+            continue
+        v = d.alternatives[a["path"]]
+        if not _differs(v, d.value, TOLERANCE[unit]):
+            errs.append(f"gold.accept path {a['path']!r} equals the gold")
+        for label, wrong in d.silent_fail.items():
+            if not _differs(v, wrong, TOLERANCE[unit]):
+                errs.append(f"gold.accept path {a['path']!r} equals silent-fail value {label!r}")
+        out.append({"path": a["path"], "value": _clean(v), "reason": " ".join(a["reason"].split())})
+    return out, errs
+
+
 def _comparable(d) -> tuple:
     # Silent-fail values are left out on purpose: they are what a wrong query
     # returns on the snapshot, and some wrong paths (status = 'open') are wrong
     # precisely because they read the snapshot's state.
-    return (d.value, d.components, d.columns, d.rows, d.evidence)
+    return (d.value, d.components, d.columns, d.rows, d.evidence, d.alternatives)
 
 
 def _object_strings(tables: dict) -> dict:

@@ -47,6 +47,9 @@ class Derived:
     rows: list[list[Any]] | None = None
     evidence: dict[str, Any] = field(default_factory=dict)
     silent_fail: dict[str, Any] = field(default_factory=dict)
+    # Other defensible readings of the question, by name. A record opts into one with
+    # gold.accept (scored `acceptable`); the build rejects one equal to a silent-fail value.
+    alternatives: dict[str, Any] = field(default_factory=dict)
 
 
 DERIVERS: dict[str, Callable[..., Derived]] = {}
@@ -892,9 +895,12 @@ def current_customers(t: Tables, *, start: str, end: str) -> Derived:
     """Canonical customers with >= 1 eligible order in the trailing window
     (twelve full calendar months ending at the snapshot month). Wrong paths:
     including test/internal accounts, summing per-channel counts, and counting
-    every app profile ever created."""
+    every app profile ever created. Alternative: the same-length window ending a
+    month earlier, for a reader who takes the snapshot month as incomplete."""
     o = orders(t)
     w = o[_between(o.order_date, start, end)]
+    prior_start = str((_ts(start).to_period("M") - 1).start_time.date())
+    prior_end = str((_ts(end).to_period("M") - 1).end_time.date())
     raw = all_orders(t)
     rw = raw[_between(raw.order_date, start, end)]
     c = t["app_db__customers"]
@@ -904,6 +910,9 @@ def current_customers(t: Tables, *, start: str, end: str) -> Derived:
             "including_test_and_internal": int(rw.customer_id.nunique()),
             "sum_of_channel_counts": int(w.groupby("channel").customer_id.nunique().sum()),
             "all_profiles_created": int((_day(c.created_at) <= _ts(end)).sum()),
+        },
+        alternatives={
+            "window_ending_prior_month": int(o[_between(o.order_date, prior_start, prior_end)].customer_id.nunique()),
         },
     )
 

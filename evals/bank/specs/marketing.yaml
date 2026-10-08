@@ -102,6 +102,7 @@ questions:
     pinned_scope: {window: {start: 2024-09-01, end: 2024-09-30}}
     gold:
       kind: value
+      asked: [discount_dollars]
       unit: count
       derive: {fn: promo_usage, params: {promo_code: BTB15}}
     gold_sql: |
